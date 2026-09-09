@@ -1,6 +1,12 @@
 # GovSite Checker
 
-A government website uptime and security monitoring dashboard focused on Philippine government websites (`.gov.ph` domains).
+A government website uptime and security monitoring dashboard focused on Philippine government websites (`.gov.ph` domains), with a full suite of OSINT reconnaissance tools.
+
+> **Static demo on GitHub Pages:** https://fajardoclark359-alt.github.io/govsite-checker/
+>
+> The Pages site is a **static UI shell only** — GitHub Pages cannot run the
+> Python backend, so the monitor and OSINT tools require running the server
+> locally (see [Quick Start](#quick-start)).
 
 ## Features
 
@@ -24,7 +30,7 @@ A government website uptime and security monitoring dashboard focused on Philipp
 |------|-------------|
 | IP Geolocation | Location, ISP, and ASN lookup via ip-api.com |
 | WHOIS/RDAP Lookup | Registration dates, registrar, nameservers, status via RDAP |
-| Email Header Analysis | Parses Received hops, origin IP geolocation, SPF/DKIM authentication |
+| Email Header Analysis | Parses Received hops, origin IP geolocation, SPF/DKIM/DMARC authentication |
 | Domain Reputation | Suspicious TLD detection, phishing keyword analysis, typosquatting check |
 | DNS Enumeration | A, AAAA, MX, NS, TXT, SOA, CNAME, SRV records + reverse DNS |
 | SSL/TLS Certificate Analyzer | Certificate details, issuer, expiry, cipher, protocol version |
@@ -40,32 +46,62 @@ A government website uptime and security monitoring dashboard focused on Philipp
 
 ## Prerequisites
 
-- Python 3.7+
+- Python 3.10+ (no framework — stdlib + `requests`)
 - `requests` library (`pip install requests`)
+- No `dig`/`nslookup` required — DNS tools use DNS-over-HTTPS
 
 ## Quick Start
 
 ```bash
-# Option 1: Double-click start.bat (Windows)
+# Option 1: Linux / macOS
+./start.sh
 
-# Option 2: Run directly in Python
-python server.py
+# Option 2: Windows — double-click start.bat
+
+# Option 3: Run directly
+python3 server.py
 ```
 
-The server starts on `http://localhost:8000/` and opens automatically in your browser.
+The server starts on `http://localhost:8000/` and opens automatically in your browser (when a graphical session is present).
+
+### Smoke test
+
+```bash
+python3 -c "import sys; sys.path.insert(0,'.'); import server; print('OK')"
+```
 
 ## Project Structure
 
 ```
 govsite-checker/
-  server.py          Backend: HTTP server with OSINT tools
-  sites.json          Database of Philippine government websites
-  start.bat           Windows launcher
+  server.py            Backend: Python http.server + requests, all OSINT tools
+  sites.json           Database of Philippine government websites (175 entries)
+  start.sh             Linux / macOS launcher
+  start.bat            Windows launcher
+  AGENTS.md            Maintainer notes (conventions, gotchas)
   public/
-    index.html        Dashboard UI
-    app.js            Client-side JavaScript
-    style.css         Styles
+    index.html         Dashboard UI (monitor + OSINT tabs)
+    app.js             Client-side JavaScript (vanilla, no build step)
+    style.css          Styles
+  .github/workflows/   GitHub Actions -> static GitHub Pages deploy
 ```
+
+## Deployment
+
+### Local (full functionality)
+
+```bash
+python3 server.py   # http://localhost:8000
+```
+
+All features work locally: site monitoring, breach scanning, export reports, and every OSINT tool.
+
+### GitHub Pages (static shell)
+
+The repo includes `.github/workflows/pages.yml`, which publishes the `public/`
+directory to GitHub Pages on every push to `master`. See the note at the top of
+this file: the Pages site renders the UI but cannot perform checks or lookups,
+because GitHub Pages only serves static files and the backend runs in Python.
 
 ## API Endpoints
 
@@ -74,19 +110,21 @@ govsite-checker/
 | POST | `/api/check` | Check site availability (body: `{urls, timeout}`) |
 | POST | `/api/breach` | HIBP breach scan (body: `{domains, key}`) |
 | POST | `/api/osint/ip-geolocate` | IP geolocation (body: `{ip}`) |
+| POST | `/api/osint/reverse-ip` | Reverse IP lookup (body: `{ip}`) |
 | POST | `/api/osint/whois` | WHOIS lookup (body: `{domain}`) |
-| POST | `/api/osint/email-header` | Email header analysis (body: `{header}`) |
-| POST | `/api/osint/domain-reputation` | Domain reputation check (body: `{domain}`) |
 | POST | `/api/osint/dns` | DNS enumeration (body: `{domain}`) |
-| POST | `/api/osint/ssl` | SSL/TLS certificate analysis (body: `{domain}`) |
-| POST | `/api/osint/ports` | Port scanner (body: `{host}`) |
+| POST | `/api/osint/ssl` | SSL/TLS certificate analysis (body: `{domain, port?}`) |
+| POST | `/api/osint/ports` | Port scanner (body: `{domain, ports?}`) |
 | POST | `/api/osint/tech` | Technology detection (body: `{url}`) |
 | POST | `/api/osint/subdomains` | Subdomain discovery (body: `{domain}`) |
-| POST | `/api/osint/dorks` | Google dorking helper (body: `{domain, engine}`) |
-| POST | `/api/osint/urlhaus` | URLhaus malware check (body: `{url}`) |
-| POST | `/api/osint/reverse-ip` | Reverse IP lookup (body: `{ip}`) |
 | POST | `/api/osint/security-headers` | Security headers analysis (body: `{url}`) |
+| POST | `/api/osint/dorks` | Google dorking helper (body: `{domain}`) |
+| POST | `/api/osint/urlhaus` | URLhaus malware check (body: `{url}`) |
+| POST | `/api/osint/email-header` | Email header analysis (body: `{header}`) |
+| POST | `/api/osint/domain-reputation` | Domain reputation check (body: `{domain}`) |
 | GET | `/api/sites` | Returns the sites database |
+
+All `POST` endpoints accept JSON bodies (`Content-Type: application/json`).
 
 ## Developer
 
