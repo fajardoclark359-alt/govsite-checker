@@ -1264,7 +1264,8 @@
               data.isp = data.connection?.isp;
               data.org = data.connection?.org;
               data.as = data.connection?.asn;
-              data.barangay = data.district || null;
+            data.barangay = data.district || null;
+            data.zip = data.postal || null;
             }
           } catch (e2) {
             data = { error: 'All geolocation APIs failed. Check your connection.' };
