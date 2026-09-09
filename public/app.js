@@ -60,36 +60,95 @@
     return [...new Set(candidates)];
   }
 
+  const BROWSER_HEADERS = {
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'none',
+    'Sec-Fetch-User': '?1',
+    'Upgrade-Insecure-Requests': '1'
+  };
+
+  function jitterMs() { return Math.floor(Math.random() * 200) + 50; }
+
   async function clientCheck(url, timeoutSec) {
     const candidates = candidateUrls(url);
-    const perUrlTimeout = Math.max(Math.floor(timeoutSec / candidates.length), 3);
+    const perUrlTimeout = Math.max(Math.floor(timeoutSec / candidates.length), 5);
     let lastError = '';
     let lastDownReason = 'other';
     const start = Date.now();
 
-    for (const candidate of candidates) {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), perUrlTimeout * 1000);
+    for (let ci = 0; ci < candidates.length; ci++) {
+      const candidate = candidates[ci];
+      if (ci > 0) await new Promise((r) => setTimeout(r, jitterMs()));
+
+      // Strategy 1: cors mode with browser headers (gets real status if CORS allowed)
+      const ctrl1 = new AbortController();
+      const timer1 = setTimeout(() => ctrl1.abort(), perUrlTimeout * 1000);
       try {
-        const res = await fetch(candidate, { mode: 'no-cors', signal: ctrl.signal, cache: 'no-store', redirect: 'follow' });
-        clearTimeout(timer);
+        const res = await fetch(candidate, {
+          mode: 'cors',
+          signal: ctrl1.signal,
+          cache: 'no-store',
+          redirect: 'follow',
+          headers: BROWSER_HEADERS
+        });
+        clearTimeout(timer1);
         const ms = Date.now() - start;
-        const isFallback = candidate !== url;
+        const code = res.status;
+        const hdrs = {};
+        try { res.headers.forEach((v, k) => { hdrs[k.toLowerCase()] = v; }); } catch (e) { /* ok */ }
         return {
-          url: url, usedUrl: candidate, status: 'UP', reachable: true, code: 0, ms: ms,
-          error: '', dns: true, httpNote: isFallback ? 'Reachable via fallback (' + candidate + ')' : 'Client check (opaque response)',
-          tries: candidates.length, downReason: '', hsts: 0, csp: 0, xframe: 0, exposed: [],
-          clientSide: true, remark: isFallback ? 'Original URL failed; ' + candidate + ' responded.' : ''
+          url: url, usedUrl: candidate, status: 'UP', reachable: true, code: code, ms: ms,
+          error: '', dns: true,
+          httpNote: (candidate !== url ? 'Fallback: ' : '') + 'CORS mode — HTTP ' + code,
+          tries: candidates.length, downReason: '',
+          hsts: hdrs['strict-transport-security'] ? 1 : 0,
+          csp: hdrs['content-security-policy'] ? 1 : 0,
+          xframe: hdrs['x-frame-options'] ? 1 : 0,
+          exposed: [], clientSide: true,
+          remark: candidate !== url ? 'Original URL failed; ' + candidate + ' responded.' : ''
         };
       } catch (e) {
-        clearTimeout(timer);
-        lastError = e.message || 'Connection failed';
+        clearTimeout(timer1);
+        // CORS error means server responded but no CORS headers — site is likely UP
         const errStr = (e.message || '').toLowerCase();
-        const name = (e.name || '').toLowerCase();
-        if (name === 'abort' || errStr.includes('timeout') || name === 'timeout') lastDownReason = 'timeout';
-        else if (errStr.includes('ssl') || errStr.includes('tls') || errStr.includes('certificate') || errStr.includes('h2')) lastDownReason = 'tls';
-        else if (errStr.includes('cors') || errStr.includes('blocked') || errStr.includes('csp')) lastDownReason = 'reset';
-        else if (errStr.includes('failed') || errStr.includes('refused') || errStr.includes('network') || errStr.includes('internet')) lastDownReason = 'refused';
+        if (errStr.includes('Failed to fetch') || errStr.includes('networkerror') || errStr.includes('cors')) {
+          // Server responded but no CORS — opaque fallback
+          const ctrl2 = new AbortController();
+          const timer2 = setTimeout(() => ctrl2.abort(), Math.max(perUrlTimeout - 3, 2) * 1000);
+          try {
+            await fetch(candidate, { mode: 'no-cors', signal: ctrl2.signal, cache: 'no-store', redirect: 'follow' });
+            clearTimeout(timer2);
+            const ms = Date.now() - start;
+            return {
+              url: url, usedUrl: candidate, status: 'UP', reachable: true, code: 0, ms: ms,
+              error: '', dns: true,
+              httpNote: (candidate !== url ? 'Fallback: ' : '') + 'Opaque response (no CORS headers)',
+              tries: candidates.length, downReason: '', hsts: 0, csp: 0, xframe: 0,
+              exposed: [], clientSide: true,
+              remark: candidate !== url ? 'Original URL failed; ' + candidate + ' responded.' : ''
+            };
+          } catch (e2) {
+            clearTimeout(timer2);
+            const err2 = (e2.message || '').toLowerCase();
+            const name2 = (e2.name || '').toLowerCase();
+            if (name2 === 'abort' || err2.includes('timeout')) lastDownReason = 'timeout';
+            else if (err2.includes('ssl') || err2.includes('tls') || err2.includes('certificate')) lastDownReason = 'tls';
+            else if (err2.includes('failed') || err2.includes('refused') || err2.includes('network')) lastDownReason = 'refused';
+            else lastDownReason = 'reset';
+            lastError = e2.message || 'Connection failed';
+          }
+        } else {
+          const name = (e.name || '').toLowerCase();
+          if (name === 'abort' || errStr.includes('timeout')) lastDownReason = 'timeout';
+          else if (errStr.includes('ssl') || errStr.includes('tls') || errStr.includes('certificate')) lastDownReason = 'tls';
+          else lastError = e.message || 'Connection failed';
+        }
       }
     }
 
