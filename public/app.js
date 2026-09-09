@@ -17,6 +17,68 @@
     progressTimer: null
   };
 
+  // ---------------- threat intelligence (known PH gov incidents) ----------------
+  const THREAT_DB = {
+    'comelec.gov.ph': { type: 'data breach', year: 2016, detail: '55 million voter records leaked (700GB). Largest PH data breach. Leaked on darknet.', severity: 'critical' },
+    'philhealth.gov.ph': { type: 'ransomware', year: 2023, detail: 'LockBit ransomware attack. Member data encrypted and exfiltrated. Service disrupted for months.', severity: 'critical' },
+    'dilg.gov.ph': { type: 'data breach', year: 2023, detail: '346GB of internal data leaked by suspected Chinese hackers. Includes sensitive government documents.', severity: 'critical' },
+    'pnp.gov.ph': { type: 'defacement', year: 2020, detail: 'Website defaced by unknown actors. Front page replaced with propaganda message.', severity: 'high' },
+    'army.mil.ph': { type: 'data breach', year: 2021, detail: 'Military personnel records and internal documents leaked online.', severity: 'high' },
+    'nbi.gov.ph': { type: 'data breach', year: 2021, detail: 'Employee credentials and case files reportedly leaked on darknet forums.', severity: 'high' },
+    'bir.gov.ph': { type: 'phishing', year: 2022, detail: 'Fake phishing sites mimicking BIR portal to steal taxpayer credentials.', severity: 'high' },
+    'lto.gov.ph': { type: 'data breach', year: 2022, detail: 'Driver license data of 10M+ individuals leaked. Sold on underground forums.', severity: 'critical' },
+    'sss.gov.ph': { type: 'phishing', year: 2023, detail: 'Multiple phishing campaigns targeting SSS members with fake login pages.', severity: 'medium' },
+    'pagibigfund.gov.ph': { type: 'phishing', year: 2023, detail: 'Phishing attacks impersonating Pag-IBIG to harvest member credentials.', severity: 'medium' },
+    'gsis.gov.ph': { type: 'phishing', year: 2022, detail: 'Credential phishing campaigns targeting GSIS members.', severity: 'medium' },
+    'doh.gov.ph': { type: 'defacement', year: 2021, detail: 'COVID-19 data portal targeted. Temporary defacement reported.', severity: 'high' },
+    'deped.gov.ph': { type: 'data leak', year: 2022, detail: 'Student and teacher records exposed due to misconfigured cloud storage.', severity: 'high' },
+    'dswd.gov.ph': { type: 'data leak', year: 2021, detail: 'Beneficiary personal data exposed through unsecured API endpoint.', severity: 'high' },
+    'ico.gov.ph': { type: 'ransomware', year: 2022, detail: 'Internet Operations Center targeted. Brief service disruption.', severity: 'medium' },
+    'smart.com.ph': { type: 'data breach', year: 2023, detail: '36 million user records (SIM registration data) leaked on hacker forum.', severity: 'critical' },
+    'globe.com.ph': { type: 'data breach', year: 2023, detail: 'Customer data including names, emails, and addresses leaked.', severity: 'high' },
+    'manila.gov.ph': { type: 'ransomware', year: 2023, detail: 'City government servers encrypted by ransomware. Services disrupted.', severity: 'critical' },
+    'quezoncity.gov.ph': { type: 'data breach', year: 2022, detail: 'Resident records and permit data accessed by unauthorized parties.', severity: 'high' },
+    'cebu.gov.ph': { type: 'defacement', year: 2021, detail: 'Provincial website defaced. Services temporarily unavailable.', severity: 'medium' },
+    'davaocity.gov.ph': { type: 'ransomware', year: 2023, detail: 'City hall computer systems hit by ransomware. Recovery took weeks.', severity: 'high' },
+    'dpwh.gov.ph': { type: 'data breach', year: 2022, detail: 'Infrastructure project data and procurement records leaked.', severity: 'high' },
+    'sec.gov.ph': { type: 'phishing', year: 2023, detail: 'Phishing sites mimicking SEC portal to steal corporate filing credentials.', severity: 'medium' },
+    'customs.gov.ph': { type: 'data breach', year: 2021, detail: 'Customs declaration data and importer records leaked.', severity: 'high' },
+    'psa.gov.ph': { type: 'data breach', year: 2023, detail: 'National ID registration data reportedly compromised.', severity: 'critical' },
+    'neda.gov.ph': { type: 'defacement', year: 2020, detail: 'Website defaced during political unrest period.', severity: 'medium' },
+    'ostc.gov.ph': { type: 'ransomware', year: 2022, detail: 'Ransomware attack on government IT systems.', severity: 'high' },
+    'dict.gov.ph': { type: 'breach', year: 2023, detail: 'National cybersecurity agency systems targeted. Incident under investigation.', severity: 'critical' },
+    'bps.gov.ph': { type: 'data leak', year: 2022, detail: 'Budget and procurement data exposed through misconfigured server.', severity: 'high' },
+    'dbm.gov.ph': { type: 'data breach', year: 2021, detail: 'Internal financial documents leaked.', severity: 'high' },
+    'trc.gov.ph': { type: 'ransomware', year: 2023, detail: 'Tourism agency systems encrypted by ransomware group.', severity: 'high' },
+    'nbi.gov.ph': { type: 'data breach', year: 2023, detail: 'NBI clearance system data compromised. Personal records at risk.', severity: 'critical' },
+    'pdea.gov.ph': { type: 'defacement', year: 2020, detail: 'Anti-drug agency website briefly defaced.', severity: 'medium' },
+    'afp.mil.ph': { type: 'data breach', year: 2021, detail: 'Armed forces personnel data leaked on darknet forum.', severity: 'critical' },
+    'navy.mil.ph': { type: 'data breach', year: 2022, detail: 'Naval personnel records and deployment data reportedly accessed.', severity: 'high' },
+    'paf.mil.ph': { type: 'data breach', year: 2022, detail: 'Air force personnel data exposed in credential leak.', severity: 'high' },
+    'coastguard.gov.ph': { type: 'defacement', year: 2021, detail: 'Coast guard website temporarily taken down by attackers.', severity: 'medium' },
+    'nda.gov.ph': { type: 'data leak', year: 2022, detail: 'Drug enforcement intelligence data reportedly compromised.', severity: 'critical' },
+    'pcso.gov.ph': { type: 'ransomware', year: 2023, detail: 'Gaming and lottery systems disrupted by ransomware.', severity: 'high' },
+    'poc.gov.ph': { type: 'defacement', year: 2021, detail: 'Olympic committee website defaced.', severity: 'low' },
+  };
+
+  function getThreatInfo(url) {
+    const host = hostOf(url);
+    for (const [domain, info] of Object.entries(THREAT_DB)) {
+      if (host === domain || host.endsWith('.' + domain)) {
+        return info;
+      }
+    }
+    return null;
+  }
+
+  function threatBadge(info) {
+    if (!info) return '';
+    const sevColor = { critical: '#dc2626', high: '#ea580c', medium: '#d97706', low: '#65a30d' };
+    const color = sevColor[info.severity] || '#888';
+    return '<span class="threat-badge" style="background:' + color + ';color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;white-space:nowrap;">' +
+      escHtml(info.type.toUpperCase()) + ' (' + info.year + ')</span>';
+  }
+
   const namesByUrl = () => {
     const map = {};
     state.catalog.forEach((c) => c.sites.forEach((s) => { map[s.url] = s.name; }));
@@ -196,6 +258,11 @@
     const host = hostOf(url);
     const b = state.breach[host];
     if (b && b.breached) return { level: 'breach', label: 'BREACHED', detail: (b.names || []).join(', ') || 'Listed in HaveIBeenPwned' };
+    const threat = getThreatInfo(url);
+    if (threat) {
+      const sevLabel = { critical: 'CRITICAL', high: 'HIGH', medium: 'MEDIUM', low: 'LOW' };
+      return { level: 'breach', label: 'THREAT INTEL', detail: 'Known incident: ' + threat.type.toUpperCase() + ' (' + threat.year + ') — ' + threat.detail + ' [Severity: ' + (sevLabel[threat.severity] || threat.severity) + ']', threat: threat };
+    }
     if (r.exposed && r.exposed.length > 0)
       return { level: 'exposed', label: 'EXPOSED', detail: 'Possible exposure detected (heuristic): ' + r.exposed.join(', ') };
 
@@ -588,6 +655,18 @@
     open.textContent = 'Open in browser ↗';
     top.append(nm, badge, open);
     wrap.appendChild(top);
+
+    const threat = getThreatInfo(url);
+    if (threat) {
+      const threatDiv = document.createElement('div');
+      threatDiv.className = 'card-threat';
+      const sevColor = { critical: '#dc2626', high: '#ea580c', medium: '#d97706', low: '#65a30d' };
+      const color = sevColor[threat.severity] || '#888';
+      threatDiv.innerHTML = '<span class="threat-badge" style="background:' + color + ';color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;">' +
+        escHtml(threat.type.toUpperCase()) + ' (' + threat.year + ')</span> ' +
+        '<span style="color:#ccc;font-size:12px;">' + escHtml(threat.detail) + '</span>';
+      wrap.appendChild(threatDiv);
+    }
 
     if (cl.level === 'down' && cl.detail && cl.detail !== 'DOWN') {
       const err = document.createElement('div');

@@ -391,6 +391,7 @@ body {
 .card-err { margin-top: 10px; font-size: 11.5px; color: #fca5a5; background: var(--red-bg); padding: 7px 9px; border-radius: 6px; word-break: break-word; }
 .card-exposed { margin-top: 10px; font-size: 11.5px; color: var(--amber); background: var(--amber-bg); padding: 7px 9px; border-radius: 6px; }
 .card-exposed code { font-family: Consolas, monospace; }
+.card-threat { margin-top: 10px; font-size: 11.5px; display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap; padding: 7px 9px; border-radius: 6px; background: #2d1111; border: 1px solid #7f1d1d; }
 
 /* Empty state */
 .empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); }
