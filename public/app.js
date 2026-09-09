@@ -187,7 +187,10 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ urls, timeout: selectedTimeout() })
       });
-      const arr = await res.json();
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      if (!Array.isArray(data)) throw new Error('Unexpected server response');
+      const arr = data;
       arr.forEach((r) => { r.checkedAt = Date.now(); r.timeoutSec = selectedTimeout(); state.results[r.url] = r; });
       state.lastRun = new Date();
       renderResults();
@@ -288,18 +291,26 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ domains: hosts, key: state.key })
       });
-      const arr = await res.json();
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      if (!Array.isArray(data)) throw new Error('Unexpected server response');
+      const arr = data;
       arr.forEach((d) => { if (d) state.breach[d.domain] = d; });
       renderResults();
       applyResultDots();
+    } catch (err) {
+      console.error('Breach scan failed:', err.message);
     } finally {
       if (force) setChecking(false);
     }
   }
 
   function renderBreachNote() {
-    const metas = document.querySelectorAll('.card-err-breach');
-    metas.forEach((m) => m.remove());
+    if (Object.keys(state.breach).length) {
+      state.breach = {};
+      renderResults();
+      applyResultDots();
+    }
   }
 
   // ---------------- rendering ----------------
@@ -884,8 +895,8 @@
     let html = '';
     if (sectionLabel) html += '<div class="osint-section">' + escHtml(sectionLabel) + '</div>';
     html += '<table>';
-    rows.forEach(([k, v, cls]) => {
-      const val = (v === null || v === undefined) ? '-' : escHtml(String(v));
+    rows.forEach(([k, v, cls, raw]) => {
+      const val = (v === null || v === undefined) ? '-' : (raw ? String(v) : escHtml(String(v)));
       html += '<tr><td>' + escHtml(k) + '</td><td' + (cls ? ' class="' + escHtml(cls) + '"' : '') + '>' + val + '</td></tr>';
     });
     html += '</table>';
@@ -1190,7 +1201,7 @@
         ['URL', data.finalUrl || data.url],
         ['Status Code', data.statusCode || '-'],
         ['Security Score', data.score + ' / ' + data.maxScore],
-        ['Grade', '<span class="' + (gradeColor[data.grade] || '') + '" style="font-size:18px;font-weight:700;">' + escHtml(data.grade) + '</span>']
+        ['Grade', '<span class="' + (gradeColor[data.grade] || '') + '" style="font-size:18px;font-weight:700;">' + escHtml(data.grade) + '</span>', '', true]
       ], 'Security Headers Analysis');
       if (data.headers) {
         html += '<div class="osint-section">Header Details</div><table>';
@@ -1337,7 +1348,7 @@
         html += osintTable([
           ['SPF', data.auth.spf || '-', data.auth.spfResult === 'pass' ? 'osint-ok' : (data.auth.spfResult === 'fail' ? 'osint-error' : '')],
           ['DKIM', data.auth.dkim || '-', data.auth.dkimResult === 'pass' ? 'osint-ok' : ''],
-          ['DMARC', data.auth.dmarc || '-', '']
+          ['DMARC', data.auth.dmarc || '-', data.auth.dmarcResult === 'pass' ? 'osint-ok' : '']
         ], 'Authentication');
       }
 
@@ -1363,10 +1374,10 @@
       const el = document.getElementById('reputationResults');
       let html = osintTable([
         ['Domain', data.domain],
-        ['Safe', data.safe ? '<span class="osint-ok">Yes</span>' : '<span class="osint-error">No</span>'],
-        ['Threats', data.threats && data.threats.length ? data.threats.join(', ') : '<span class="osint-ok">None detected</span>'],
-        ['Categories', data.categories && data.categories.length ? data.categories.join(', ') : '-'],
-        ['Blacklisted', data.blacklisted ? '<span class="osint-error">Yes</span>' : '<span class="osint-ok">No</span>'],
+        ['Safe', data.safe ? '<span class="osint-ok">Yes</span>' : '<span class="osint-error">No</span>', '', true],
+        ['Threats', data.threats && data.threats.length ? escHtml(data.threats.join(', ')) : '<span class="osint-ok">None detected</span>', '', true],
+        ['Categories', data.categories && data.categories.length ? escHtml(data.categories.join(', ')) : '-'],
+        ['Blacklisted', data.blacklisted ? '<span class="osint-error">Yes</span>' : '<span class="osint-ok">No</span>', '', true],
         ['Registrar', data.registrar || '-'],
         ['Created', data.created || '-']
       ], 'Reputation Report');

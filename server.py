@@ -109,7 +109,6 @@ def _host_resolves(host):
     if not host:
         return False
     try:
-        socket.setdefaulttimeout(3)
         addrs = socket.getaddrinfo(host, None, socket.AF_UNSPEC)
         return len(addrs) > 0
     except Exception:
@@ -202,12 +201,15 @@ def check_one(client, url, timeout_sec):
                  "/server-status", "/.DS_Store", "/phpinfo.php"]
         exposed = []
         prober = make_client(4)
-        with ThreadPoolExecutor(max_workers=7) as pool:
-            futures = {pool.submit(probe, prober, base, p): p for p in paths}
-            for f in as_completed(futures):
-                result = f.result()
-                if result:
-                    exposed.append(result)
+        try:
+            with ThreadPoolExecutor(max_workers=7) as pool:
+                futures = {pool.submit(probe, prober, base, p): p for p in paths}
+                for f in as_completed(futures):
+                    result = f.result()
+                    if result:
+                        exposed.append(result)
+        finally:
+            prober.close()
         exposed.sort()
         d["exposed"] = exposed
 
@@ -445,12 +447,10 @@ def analyze_email_header(header_text):
         # Parse Received headers (reverse order)
         hops = []
         received_lines = []
-        for i in range(len(lines) - 1, -1, -1):
-            line = lines[i]
+        for line in reversed(lines):
             if line.lower().startswith("received:"):
                 received_lines.append(line[9:].strip())
-            elif received_lines and (line.startswith("\t") or line.startswith(" ") or
-                                     line.lower().startswith(("from", "by", "for", "id", "with"))):
+            elif received_lines and (line[0] in " \t"):
                 received_lines[-1] += " " + line.strip()
 
         for recv in received_lines:
@@ -509,6 +509,11 @@ def analyze_email_header(header_text):
                     val = m.group(1).rstrip(";")
                     auth["dkim"] = val
                     auth["dkimResult"] = "pass" if val.lower() == "pass" else "fail"
+                m = re.search(r'dmarc=(\S+)', results, re.IGNORECASE)
+                if m:
+                    val = m.group(1).rstrip(";")
+                    auth["dmarc"] = val
+                    auth["dmarcResult"] = "pass" if val.lower().startswith("pass") else "fail"
             elif line.lower().startswith("dkim-signature:"):
                 auth.setdefault("dkim", "present")
             elif line.lower().startswith("arc-authentication-results:"):
@@ -584,7 +589,7 @@ def check_domain_reputation(domain):
 # ================================================================
 
 # ---------- OSINT: DNS Enumeration ----------
-def _dns_query(domain, rtype, a_records=None):
+def _dns_query(domain, rtype):
     """Query DNS records using Python socket and requests."""
     results = []
 
@@ -708,11 +713,30 @@ def dns_enumerate(domain):
 
 
 # ---------- OSINT: SSL/TLS Certificate Analysis ----------
+def _decode_cert_der(der_bytes):
+    """Decode a DER-encoded certificate into a text dict via stdlib."""
+    import tempfile
+    pem = ssl.DER_cert_to_PEM_cert(der_bytes)
+    fd, path = tempfile.mkstemp()
+    try:
+        os.write(fd, pem.encode("ascii"))
+    finally:
+        os.close(fd)
+    try:
+        return ssl._ssl._test_decode_cert(path)
+    finally:
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+
+
 def ssl_analyze(domain, port=443):
     """Analyze SSL/TLS certificate details."""
     domain = domain.strip().lower().strip(".")
     d = {"domain": domain, "port": port}
 
+    sock = None
     try:
         ctx = ssl.create_default_context()
         ctx.check_hostname = False
@@ -720,10 +744,6 @@ def ssl_analyze(domain, port=443):
 
         conn = socket.create_connection((domain, port), timeout=8)
         sock = ctx.wrap_socket(conn, server_hostname=domain)
-        cert = sock.getpeercert(binary_form=True)
-
-        # Parse with ssl module for text details
-        text_cert = sock.getpeercert()
 
         # Protocol and cipher info — must read before closing the socket
         d["protocol"] = sock.version() if hasattr(sock, 'version') else "unknown"
@@ -731,7 +751,7 @@ def ssl_analyze(domain, port=443):
         if cipher:
             d["cipher"] = {"name": cipher[0], "protocol": cipher[1], "bits": cipher[2]}
 
-        sock.close()
+        text_cert = _decode_cert_der(sock.getpeercert(binary_form=True))
 
         d["subject"] = dict(x[0] for x in text_cert.get("subject", []))
         d["issuer"] = dict(x[0] for x in text_cert.get("issuer", []))
@@ -751,6 +771,12 @@ def ssl_analyze(domain, port=443):
 
     except Exception as ex:
         d["error"] = f"SSL connection failed: {ex}"
+    finally:
+        if sock is not None:
+            try:
+                sock.close()
+            except Exception:
+                pass
     return d
 
 
@@ -1220,14 +1246,20 @@ class GovSiteHandler(SimpleHTTPRequestHandler):
             urls = params.get("urls", [])
             if not urls:
                 return self.send_error_json("No URLs provided")
-            timeout = max(5, min(120, int(params.get("timeout", 12))))
+            try:
+                timeout = max(5, min(120, int(params.get("timeout", 12))))
+            except (ValueError, TypeError):
+                timeout = 15
             urls_list = [u.strip() for u in urls if u.strip()][:100]
             results = []
             client = make_client(timeout)
-            with ThreadPoolExecutor(max_workers=16) as pool:
-                futures = {pool.submit(check_one, client, u, timeout): u for u in urls_list}
-                for f in as_completed(futures):
-                    results.append(f.result())
+            try:
+                with ThreadPoolExecutor(max_workers=16) as pool:
+                    futures = {pool.submit(check_one, client, u, timeout): u for u in urls_list}
+                    for f in as_completed(futures):
+                        results.append(f.result())
+            finally:
+                client.close()
             return self.send_json(results)
 
         elif path == "/api/breach":
@@ -1293,7 +1325,10 @@ class GovSiteHandler(SimpleHTTPRequestHandler):
             if params is None:
                 return self.send_error_json("Invalid or missing JSON body")
             domain = params.get("domain", "").strip()
-            port = int(params.get("port", 443))
+            try:
+                port = int(params.get("port", 443))
+            except (ValueError, TypeError):
+                port = 443
             if not domain:
                 return self.send_error_json("Domain is required")
             return self.send_json(ssl_analyze(domain, port))
@@ -1306,7 +1341,13 @@ class GovSiteHandler(SimpleHTTPRequestHandler):
             if not domain:
                 return self.send_error_json("Domain is required")
             custom_ports = params.get("ports")
-            ports = [int(p) for p in custom_ports] if custom_ports else None
+            if custom_ports:
+                try:
+                    ports = [int(p) for p in custom_ports]
+                except (ValueError, TypeError):
+                    ports = None
+            else:
+                ports = None
             return self.send_json(scan_ports(domain, ports))
 
         elif path == "/api/osint/tech":
