@@ -105,11 +105,11 @@ body {
 .site-row .site-dot.restricted { background: #a78bfa; box-shadow: 0 0 6px #a78bfa; }
 .site-row .site-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .site-row .site-status {
-  font-size: 10px; font-weight: 600; letter-spacing: .3px;
+  font-size: 10px; font-weight: 700; letter-spacing: .3px;
   padding: 1px 6px; border-radius: 4px; flex-shrink: 0;
-  text-transform: uppercase;
+  text-transform: uppercase; border: 1px solid transparent;
 }
-.site-row .site-status.online  { color: var(--green); background: var(--green-bg); }
+.site-row .site-status.online  { color: var(--green); background: var(--green-bg); border: 1px solid var(--green); }
 .site-row .site-status.offline { color: #fff;   background: var(--red-bg); border: 1px solid var(--red); }
 .site-row .site-status.breach  { color: #fff; background: #b91c1c; }
 
