@@ -1244,6 +1244,7 @@
             data.lat = data.latitude;
             data.lon = data.longitude;
             data.org = data.org;
+            data.barangay = data.district || null;
           }
         } catch (e1) {
           try {
@@ -1263,6 +1264,7 @@
               data.isp = data.connection?.isp;
               data.org = data.connection?.org;
               data.as = data.connection?.asn;
+              data.barangay = data.district || null;
             }
           } catch (e2) {
             data = { error: 'All geolocation APIs failed. Check your connection.' };
@@ -1273,11 +1275,12 @@
       const el = document.getElementById('ipResults');
       const country = data.country || '-';
       const countryCode = data.countryCode ? ' (' + data.countryCode + ')' : '';
-      el.innerHTML = osintTable([
+      const rows = [
         ['IP Address', data.query || ip],
         ['Country', country + countryCode],
         ['Region', data.regionName || '-'],
         ['City', data.city || '-'],
+        ['Barangay / District', data.barangay || '-'],
         ['Zip Code', data.zip || '-'],
         ['Latitude', data.lat != null ? data.lat : '-'],
         ['Longitude', data.lon != null ? data.lon : '-'],
@@ -1285,7 +1288,8 @@
         ['ISP', data.isp || '-'],
         ['Organization', data.org || '-'],
         ['AS Number', data.as || '-']
-      ], 'Geolocation Result');
+      ];
+      el.innerHTML = osintTable(rows, 'Geolocation Result');
       el.classList.add('visible');
     } catch (err) {
       showOsintError('ipResults', err.message);
