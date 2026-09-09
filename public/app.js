@@ -44,36 +44,62 @@
     }
   }
 
-  async function clientCheck(url, timeoutSec) {
-    const start = Date.now();
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), timeoutSec * 1000);
-    try {
-      const res = await fetch(url, { mode: 'no-cors', signal: ctrl.signal, cache: 'no-store' });
-      clearTimeout(timer);
-      const ms = Date.now() - start;
-      return {
-        url: url, usedUrl: url, status: 'UP', reachable: true, code: 0, ms: ms,
-        error: '', dns: true, httpNote: 'Client check (opaque response)',
-        tries: 1, downReason: '', hsts: 0, csp: 0, xframe: 0, exposed: [],
-        clientSide: true
-      };
-    } catch (e) {
-      clearTimeout(timer);
-      const ms = Date.now() - start;
-      const errStr = (e.message || '').toLowerCase();
-      const name = (e.name || '').toLowerCase();
-      let downReason = 'other';
-      if (name === 'abort' || errStr.includes('timeout') || name === 'timeout') downReason = 'timeout';
-      else if (errStr.includes('failed') || errStr.includes('refused') || errStr.includes('network') || errStr.includes('internet')) downReason = 'refused';
-      else if (errStr.includes('cors') || errStr.includes('blocked') || errStr.includes('csp')) downReason = 'reset';
-      else if (errStr.includes('ssl') || errStr.includes('tls') || errStr.includes('certificate') || errStr.includes('h2')) downReason = 'tls';
-      return {
-        url: url, usedUrl: url, status: 'DOWN', reachable: false, code: 0, ms: ms,
-        error: e.message || 'Connection failed', dns: true, httpNote: '',
-        tries: 1, downReason: downReason, hsts: 0, csp: 0, xframe: 0, exposed: []
-      };
+  function candidateUrls(url) {
+    const u = new URL(url);
+    const host = u.hostname;
+    const candidates = [url];
+    if (!host.startsWith('www.') && host.includes('.')) {
+      candidates.push(u.protocol + '//' + 'www.' + host + u.pathname + u.search);
     }
+    if (u.protocol === 'https:') {
+      candidates.push('http://' + u.host + u.pathname + u.search);
+      if (!host.startsWith('www.') && host.includes('.')) {
+        candidates.push('http://www.' + host + u.pathname + u.search);
+      }
+    }
+    return [...new Set(candidates)];
+  }
+
+  async function clientCheck(url, timeoutSec) {
+    const candidates = candidateUrls(url);
+    const perUrlTimeout = Math.max(Math.floor(timeoutSec / candidates.length), 3);
+    let lastError = '';
+    let lastDownReason = 'other';
+    const start = Date.now();
+
+    for (const candidate of candidates) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), perUrlTimeout * 1000);
+      try {
+        const res = await fetch(candidate, { mode: 'no-cors', signal: ctrl.signal, cache: 'no-store', redirect: 'follow' });
+        clearTimeout(timer);
+        const ms = Date.now() - start;
+        const isFallback = candidate !== url;
+        return {
+          url: url, usedUrl: candidate, status: 'UP', reachable: true, code: 0, ms: ms,
+          error: '', dns: true, httpNote: isFallback ? 'Reachable via fallback (' + candidate + ')' : 'Client check (opaque response)',
+          tries: candidates.length, downReason: '', hsts: 0, csp: 0, xframe: 0, exposed: [],
+          clientSide: true, remark: isFallback ? 'Original URL failed; ' + candidate + ' responded.' : ''
+        };
+      } catch (e) {
+        clearTimeout(timer);
+        lastError = e.message || 'Connection failed';
+        const errStr = (e.message || '').toLowerCase();
+        const name = (e.name || '').toLowerCase();
+        if (name === 'abort' || errStr.includes('timeout') || name === 'timeout') lastDownReason = 'timeout';
+        else if (errStr.includes('ssl') || errStr.includes('tls') || errStr.includes('certificate') || errStr.includes('h2')) lastDownReason = 'tls';
+        else if (errStr.includes('cors') || errStr.includes('blocked') || errStr.includes('csp')) lastDownReason = 'reset';
+        else if (errStr.includes('failed') || errStr.includes('refused') || errStr.includes('network') || errStr.includes('internet')) lastDownReason = 'refused';
+      }
+    }
+
+    const ms = Date.now() - start;
+    return {
+      url: url, usedUrl: url, status: 'DOWN', reachable: false, code: 0, ms: ms,
+      error: lastError, dns: true, httpNote: '',
+      tries: candidates.length, downReason: lastDownReason, hsts: 0, csp: 0, xframe: 0, exposed: [],
+      remark: 'Tried ' + candidates.length + ' URL variant(s): ' + candidates.join(', ')
+    };
   }
 
   // ---------------- classification ----------------
@@ -88,21 +114,22 @@
         detail = 'Domain does not resolve in DNS - the hostname has no records. A browser on a different network/proxy could still open it if that network resolves differently.';
       else {
         const tries = r.tries || 1;
+        const clientNote = r.clientSide ? ' (client-side check; run python3 server.py for accurate results)' : '';
         switch (r.downReason) {
           case 'timeout':
-            detail = 'No HTTP response within ' + (r.timeoutSec || '?') + 's on ' + tries + ' attempt(s). The site may be slow rather than down - open in a browser to confirm.';
+            detail = 'No HTTP response within ' + (r.timeoutSec || '?') + 's after ' + tries + ' URL variant(s). The site may be slow rather than down - open in a browser to confirm.';
             break;
           case 'refused':
-            detail = 'Connection refused - nothing is listening on this port. If the browser opens it, the difference is usually a proxy or a WAF routing rule.';
+            detail = 'Connection refused on all ' + tries + ' URL variant(s). The site may use a WAF or proxy that blocks non-browser requests. Open in a browser to verify.' + clientNote;
             break;
           case 'reset':
-            detail = 'The connection was dropped by a network filter / WAF (bot detection). It will typically open fine in a real browser - verify below.';
+            detail = 'Connection dropped on all ' + tries + ' URL variant(s) (possible bot detection / WAF). The site will typically open in a real browser.' + clientNote;
             break;
           case 'tls':
-            detail = 'Secure handshake failed. Browser may still succeed if it negotiates a newer HTTP/2 or TLS profile.';
+            detail = 'SSL/TLS handshake failed on all ' + tries + ' URL variant(s). The site may have an expired or self-signed certificate.' + clientNote;
             break;
           default:
-            detail = (r.error || 'No response received') + ' - verify in a browser.';
+            detail = (r.error || 'No response received') + ' after ' + tries + ' URL variant(s). Verify in a browser.' + clientNote;
         }
       }
       return { level: 'down', label: 'DOWN', detail: r.remark ? r.remark + '\n\n' + detail : detail };
