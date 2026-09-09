@@ -110,7 +110,7 @@ body {
   text-transform: uppercase;
 }
 .site-row .site-status.online  { color: var(--green); background: var(--green-bg); }
-.site-row .site-status.offline { color: var(--red);   background: var(--red-bg); }
+.site-row .site-status.offline { color: #fff;   background: var(--red-bg); border: 1px solid var(--red); }
 .site-row .site-status.breach  { color: #fff; background: #b91c1c; }
 
 .sidebar-footer { border-top: 1px solid var(--line); padding: 10px 16px; display: flex; flex-direction: column; gap: 8px; }
