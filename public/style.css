@@ -410,3 +410,14 @@ body {
   .sidebar { width: 100%; min-width: 0; max-height: 42vh; }
   .content { min-height: 58vh; }
 }
+
+/* Server banner */
+.server-banner {
+  background: var(--amber-bg);
+  border: 1px solid var(--amber);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12.5px;
+  color: var(--amber);
+  margin-bottom: 14px;
+}

@@ -4,13 +4,14 @@
   const $ = (sel) => document.querySelector(sel);
 
   // ---------------- state ----------------
+  let hasServer = null;
   const state = {
-    catalog: [],          // [{category, sites:[{name,url}]}]
-    checked: {},          // url -> true
-    results: {},          // url -> {status,code,ms,error,hsts,csp,xframe,exposed[]}
-    breach: {},           // host -> {breached,names[],note}
+    catalog: [],
+    checked: {},
+    results: {},
+    breach: {},
     key: localStorage.getItem('hibpKey') || '',
-    custom: [],           // [{name,url}]
+    custom: [],
     checking: false,
     lastRun: null,
     progressTimer: null
@@ -30,6 +31,57 @@
     if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
     return u;
   };
+
+  async function detectServer() {
+    try {
+      const res = await fetch('/api/sites', { method: 'GET', signal: AbortSignal.timeout(3000) });
+      hasServer = res.ok;
+    } catch (e) {
+      hasServer = false;
+    }
+  }
+
+  async function clientCheck(url, timeoutSec) {
+    const start = Date.now();
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutSec * 1000);
+    try {
+      const res = await fetch(url, { mode: 'no-cors', signal: ctrl.signal });
+      clearTimeout(timer);
+      const ms = Date.now() - start;
+      return {
+        url: url, usedUrl: url, status: 'UP', reachable: true, code: 0, ms: ms,
+        error: '', dns: true, httpNote: 'Client check (opaque response)',
+        tries: 1, downReason: '', hsts: 0, csp: 0, xframe: 0, exposed: [],
+        clientSide: true
+      };
+    } catch (e) {
+      clearTimeout(timer);
+      const ms = Date.now() - start;
+      const errStr = (e.message || '').toLowerCase();
+      let downReason = 'other';
+      if (e.name === 'AbortError' || errStr.includes('timeout')) downReason = 'timeout';
+      else if (errStr.includes('failed') || errStr.includes('refused') || errStr.includes('network')) downReason = 'refused';
+      else if (errStr.includes('cors') || errStr.includes('blocked')) downReason = 'reset';
+      return {
+        url: url, usedUrl: url, status: 'DOWN', reachable: false, code: 0, ms: ms,
+        error: e.message || 'Connection failed', dns: true, httpNote: '',
+        tries: 1, downReason: downReason, hsts: 0, csp: 0, xframe: 0, exposed: []
+      };
+    }
+  }
+
+  async function clientCheckUrls(urls, timeoutSec) {
+    const concurrency = 20;
+    const results = [];
+    for (let i = 0; i < urls.length; i += concurrency) {
+      const batch = urls.slice(i, i + concurrency);
+      const batchResults = await Promise.all(batch.map((u) => clientCheck(u, timeoutSec)));
+      results.push(...batchResults);
+      batchResults.forEach((r) => { r.checkedAt = Date.now(); r.timeoutSec = timeoutSec; state.results[r.url] = r; });
+    }
+    return results;
+  }
 
   // ---------------- classification ----------------
   const LEVEL_ORDER = ['down', 'error', 'breach', 'exposed', 'restricted', 'risk', 'clean', 'unknown'];
@@ -190,21 +242,24 @@
     startProgress('Checking ' + urls.length + ' site(s)...');
 
     try {
-      const res = await fetch('/api/check', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ urls, timeout: selectedTimeout() })
-      });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      if (!Array.isArray(data)) throw new Error('Unexpected server response');
-      const arr = data;
-      arr.forEach((r) => { r.checkedAt = Date.now(); r.timeoutSec = selectedTimeout(); state.results[r.url] = r; });
+      if (hasServer) {
+        const res = await fetch('/api/check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ urls, timeout: selectedTimeout() })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        if (!Array.isArray(data)) throw new Error('Unexpected server response');
+        data.forEach((r) => { r.checkedAt = Date.now(); r.timeoutSec = selectedTimeout(); state.results[r.url] = r; });
+      } else {
+        await clientCheckUrls(urls, selectedTimeout());
+      }
       state.lastRun = new Date();
       renderResults();
       applyResultDots();
       updateCheckButtons();
-      if (state.key) await breachScan(false);
+      if (hasServer && state.key) await breachScan(false);
       else renderBreachNote();
     } catch (err) {
       alert('Check failed: ' + err.message);
@@ -290,6 +345,7 @@
   // ---------------- breach scan ----------------
   async function breachScan(force = true) {
     if (!state.key) return;
+    if (!hasServer) { renderBreachNote(); return; }
     if (force) setChecking(true);
     const hosts = unique(Object.keys(state.results).map(hostOf));
     if (!hosts.length) return;
@@ -318,6 +374,15 @@
       state.breach = {};
       renderResults();
       applyResultDots();
+    }
+    if (hasServer === false) {
+      const el = document.getElementById('results');
+      if (el && !el.querySelector('.breach-note')) {
+        const note = document.createElement('div');
+        note.className = 'breach-note server-banner';
+        note.textContent = 'Breach scanning requires the Python server (HIBP API key). Run locally: python3 server.py';
+        el.prepend(note);
+      }
     }
   }
 
@@ -899,6 +964,24 @@
     el.classList.add('visible');
   }
 
+  function requireServer(elId) {
+    if (hasServer) return true;
+    showOsintError(elId, 'Server not available. This OSINT tool requires running the Python backend locally (python3 server.py). On GitHub Pages, only site checking and email analysis work client-side.');
+    return false;
+  }
+
+  async function osintPost(path, body) {
+    if (hasServer) {
+      const res = await fetch(path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      return await res.json();
+    }
+    return null;
+  }
+
   function osintTable(rows, sectionLabel) {
     let html = '';
     if (sectionLabel) html += '<div class="osint-section">' + escHtml(sectionLabel) + '</div>';
@@ -916,12 +999,14 @@
     if (!ip) { showOsintError('ipResults', 'Please enter an IP address.'); return; }
     showOsintLoading('ipResults');
     try {
-      const res = await fetch('/api/osint/ip-geolocate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ip })
-      });
-      const data = await res.json();
+      let data;
+      if (hasServer) {
+        data = await osintPost('/api/osint/ip-geolocate', { ip });
+      } else {
+        const res = await fetch('http://ip-api.com/json/' + encodeURIComponent(ip) + '?fields=query,country,countryCode,region,regionName,city,zip,lat,lon,timezone,isp,org,as');
+        data = await res.json();
+        if (data.status === 'fail') { data.error = data.message; }
+      }
       if (data.error) { showOsintError('ipResults', data.error); return; }
       const el = document.getElementById('ipResults');
       const country = data.country || '-';
@@ -950,12 +1035,17 @@
     if (!ip) { showOsintError('reverseIpResults', 'Please enter an IP address.'); return; }
     showOsintLoading('reverseIpResults');
     try {
-      const res = await fetch('/api/osint/reverse-ip', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ip })
-      });
-      const data = await res.json();
+      let data;
+      if (hasServer) {
+        data = await osintPost('/api/osint/reverse-ip', { ip });
+      } else {
+        let primaryHostname = null;
+        try { primaryHostname = (await (await fetch('https://dns.google/resolve?name=' + encodeURIComponent(ip) + '&type=PTR')).json()).Answer?.[0]?.data?.replace(/\.$/, '') || null; } catch (e) { /* ok */ }
+        const apiRes = await fetch('https://api.hackertarget.com/reverseiplookup/?q=' + encodeURIComponent(ip));
+        const text = await apiRes.text();
+        const domains = text.split('\n').filter((l) => l.trim() && !l.startsWith('error') && !l.startsWith('API'));
+        data = { ip, primaryHostname, domains, totalDomains: domains.length };
+      }
       if (data.error) { showOsintError('reverseIpResults', data.error); return; }
       const el = document.getElementById('reverseIpResults');
       let html = osintTable([
@@ -980,12 +1070,34 @@
     if (!domain) { showOsintError('dnsResults', 'Please enter a domain.'); return; }
     showOsintLoading('dnsResults');
     try {
-      const res = await fetch('/api/osint/dns', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain })
-      });
-      const data = await res.json();
+      let data;
+      if (hasServer) {
+        data = await osintPost('/api/osint/dns', { domain });
+      } else {
+        const records = {};
+        const types = ['A', 'AAAA', 'MX', 'NS', 'TXT', 'SOA', 'CNAME', 'SRV'];
+        for (const t of types) {
+          try {
+            const res = await fetch('https://dns.google/resolve?name=' + encodeURIComponent(domain) + '&type=' + t);
+            const j = await res.json();
+            if (j.Answer && j.Answer.length) {
+              records[t] = j.Answer.filter((a) => a.type === ({A:1,AAAA:28,MX:15,NS:2,TXT:16,SOA:6,CNAME:5,SRV:33}[t])).map((a) => a.data);
+              if (!records[t].length) delete records[t];
+            }
+          } catch (e) { /* skip */ }
+        }
+        const reverseDns = [];
+        for (const ip of (records.A || [])) {
+          try {
+            const res = await fetch('https://dns.google/resolve?name=' + encodeURIComponent(ip) + '&type=PTR');
+            const j = await res.json();
+            reverseDns.push({ ip, hostname: j.Answer?.[0]?.data?.replace(/\.$/, '') || null });
+          } catch (e) {
+            reverseDns.push({ ip, hostname: null });
+          }
+        }
+        data = { domain, records, reverseDns, totalRecords: Object.values(records).reduce((n, a) => n + a.length, 0) };
+      }
       if (data.error) { showOsintError('dnsResults', data.error); return; }
       const el = document.getElementById('dnsResults');
       let html = osintTable([
@@ -1019,12 +1131,32 @@
     if (!domain) { showOsintError('whoisResults', 'Please enter a domain.'); return; }
     showOsintLoading('whoisResults');
     try {
-      const res = await fetch('/api/osint/whois', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain })
-      });
-      const data = await res.json();
+      let data;
+      if (hasServer) {
+        data = await osintPost('/api/osint/whois', { domain });
+      } else {
+        const res = await fetch('https://rdap.org/domain/' + encodeURIComponent(domain));
+        if (!res.ok) { data = { domain, error: 'Domain not found in RDAP database' }; }
+        else {
+          const parsed = await res.json();
+          data = { domain };
+          for (const ev of (parsed.events || [])) {
+            if (ev.eventAction === 'registration') data.created = ev.eventDate;
+            if (ev.eventAction === 'expiration') data.expires = ev.eventDate;
+            if (ev.eventAction === 'last update of RDAP database') data.updated = ev.eventDate;
+          }
+          for (const ent of (parsed.entities || [])) {
+            if (ent.vcardArray) {
+              for (const f of ent.vcardArray[1] || []) {
+                if (f[0] === 'fn') data.registrar = f[3] || '';
+              }
+            }
+          }
+          data.status = (parsed.status || []).filter((s) => typeof s === 'string');
+          data.nameServers = (parsed.nameservers || []).map((n) => n.ldhName).filter(Boolean);
+          data.rawText = JSON.stringify(parsed, null, 2).slice(0, 3000);
+        }
+      }
       if (data.error) { showOsintError('whoisResults', data.error); return; }
       const el = document.getElementById('whoisResults');
       let html = osintTable([
@@ -1052,12 +1184,13 @@
     if (!domain) { showOsintError('sslResults', 'Please enter a domain.'); return; }
     showOsintLoading('sslResults');
     try {
-      const res = await fetch('/api/osint/ssl', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain })
-      });
-      const data = await res.json();
+      let data;
+      if (hasServer) {
+        data = await osintPost('/api/osint/ssl', { domain });
+      } else {
+        showOsintError('sslResults', 'SSL/TLS analysis requires the Python server (socket access needed). Run locally: python3 server.py');
+        return;
+      }
       if (data.error) { showOsintError('sslResults', data.error); return; }
       const el = document.getElementById('sslResults');
       const issuer = data.issuer || {};
@@ -1093,12 +1226,13 @@
     if (!domain) { showOsintError('portResults', 'Please enter a domain or IP.'); return; }
     showOsintLoading('portResults');
     try {
-      const res = await fetch('/api/osint/ports', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain })
-      });
-      const data = await res.json();
+      let data;
+      if (hasServer) {
+        data = await osintPost('/api/osint/ports', { domain });
+      } else {
+        showOsintError('portResults', 'Port scanning requires the Python server (socket access needed). Run locally: python3 server.py');
+        return;
+      }
       if (data.error) { showOsintError('portResults', data.error); return; }
       const el = document.getElementById('portResults');
       let html = osintTable([
@@ -1127,12 +1261,22 @@
     if (!url) { showOsintError('techResults', 'Please enter a URL.'); return; }
     showOsintLoading('techResults');
     try {
-      const res = await fetch('/api/osint/tech', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url })
-      });
-      const data = await res.json();
+      let data;
+      if (hasServer) {
+        data = await osintPost('/api/osint/tech', { url });
+      } else {
+        try {
+          const res = await fetch(url, { mode: 'no-cors' });
+          data = { url, finalUrl: url, statusCode: 0, technologies: {} };
+          const hdrs = {};
+          res.headers.forEach((v, k) => { hdrs[k.toLowerCase()] = v; });
+          const server = hdrs['server'] || '';
+          if (server) data.technologies = { server: [server.split('/')[0].trim()] };
+          else data.technologies = {};
+        } catch (e) {
+          data = { url, error: 'Client-side tech detection failed: ' + e.message };
+        }
+      }
       if (data.error) { showOsintError('techResults', data.error); return; }
       const el = document.getElementById('techResults');
       let html = osintTable([
@@ -1164,12 +1308,28 @@
     if (!domain) { showOsintError('subdomainResults', 'Please enter a domain.'); return; }
     showOsintLoading('subdomainResults');
     try {
-      const res = await fetch('/api/osint/subdomains', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain })
-      });
-      const data = await res.json();
+      let data;
+      if (hasServer) {
+        data = await osintPost('/api/osint/subdomains', { domain });
+      } else {
+        const subs = ['www','mail','ftp','smtp','pop','imap','webmail','mx','ns1','ns2','ns3','dns','api','dev','staging','test','admin','portal','vpn','cdn','static','blog','shop','app','login','monitor','status','git','jenkins','ci','db','redis','owa','cpanel'];
+        const found = [];
+        const check = async (s) => {
+          try {
+            const r = await fetch('https://dns.google/resolve?name=' + encodeURIComponent(s + '.' + domain) + '&type=A');
+            const j = await r.json();
+            if (j.Answer && j.Answer.some((a) => a.type === 1)) return { subdomain: s + '.' + domain, ips: j.Answer.filter((a) => a.type === 1).map((a) => a.data) };
+          } catch (e) { /* skip */ }
+          return null;
+        };
+        for (let i = 0; i < subs.length; i += 10) {
+          const batch = subs.slice(i, i + 10);
+          const results = await Promise.all(batch.map(check));
+          results.filter(Boolean).forEach((r) => found.push(r));
+        }
+        found.sort((a, b) => a.subdomain.localeCompare(b.subdomain));
+        data = { domain, found, checked: subs.length, totalFound: found.length };
+      }
       if (data.error) { showOsintError('subdomainResults', data.error); return; }
       const el = document.getElementById('subdomainResults');
       let html = osintTable([
@@ -1196,12 +1356,32 @@
     if (!url) { showOsintError('secHeadersResults', 'Please enter a URL.'); return; }
     showOsintLoading('secHeadersResults');
     try {
-      const res = await fetch('/api/osint/security-headers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url })
-      });
-      const data = await res.json();
+      let data;
+      if (hasServer) {
+        data = await osintPost('/api/osint/security-headers', { url });
+      } else {
+        const res = await fetch(url, { mode: 'no-cors' });
+        const hdrs = {};
+        try { res.headers.forEach((v, k) => { hdrs[k.toLowerCase()] = v; }); } catch (e) { /* no-cors */ }
+        const checks = [
+          ['strict-transport-security', 'HSTS', 2],
+          ['content-security-policy', 'CSP', 2],
+          ['x-frame-options', 'XFO', 1],
+          ['x-content-type-options', 'XCTO', 1],
+          ['referrer-policy', 'RP', 1],
+          ['permissions-policy', 'PP', 1]
+        ];
+        let score = 0, maxScore = 0;
+        const headers = {}, findings = [];
+        checks.forEach(([k, name, pts]) => {
+          maxScore += pts;
+          if (hdrs[k]) { score += pts; headers[name] = { name: k, value: hdrs[k], present: true }; findings.push({ header: k, status: 'present', value: hdrs[k] }); }
+          else { headers[name] = { name: k, value: null, present: false }; findings.push({ header: k, status: 'missing', recommendation: name }); }
+        });
+        const grade = score >= maxScore * 0.8 ? 'A' : score >= maxScore * 0.6 ? 'B' : score >= maxScore * 0.4 ? 'C' : score >= maxScore * 0.2 ? 'D' : 'F';
+        data = { url, finalUrl: url, statusCode: 0, score, maxScore, grade, headers, findings };
+        findings.push({ header: 'Note', status: 'info', recommendation: 'Client-side check: limited header visibility (no-cors mode). For full analysis, run the Python server locally.' });
+      }
       if (data.error) { showOsintError('secHeadersResults', data.error); return; }
       const el = document.getElementById('secHeadersResults');
       const gradeColor = { A: 'osint-ok', B: 'osint-ok', C: 'osint-warn', D: 'osint-error', F: 'osint-error' };
@@ -1241,12 +1421,24 @@
     if (!domain) { showOsintError('dorkResults', 'Please enter a domain.'); return; }
     showOsintLoading('dorkResults');
     try {
-      const res = await fetch('/api/osint/dorks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain })
-      });
-      const data = await res.json();
+      let data;
+      if (hasServer) {
+        data = await osintPost('/api/osint/dorks', { domain });
+      } else {
+        const dorks = [
+          { label: 'Login Pages', query: 'site:' + domain + ' inurl:login OR inurl:admin OR inurl:portal', risk: 'medium' },
+          { label: 'Exposed Files', query: 'site:' + domain + ' filetype:pdf OR filetype:doc OR filetype:xlsx', risk: 'low' },
+          { label: 'Error Messages', query: 'site:' + domain + ' intext:"error" OR intext:"warning" OR intext:"exception"', risk: 'medium' },
+          { label: 'Directory Listing', query: 'site:' + domain + ' intitle:"index of"', risk: 'high' },
+          { label: 'Config Files', query: 'site:' + domain + ' filetype:env OR filetype:yml OR filetype:conf OR filetype:ini', risk: 'high' },
+          { label: 'SQL Errors', query: 'site:' + domain + ' intext:"sql" OR intext:"mysql" OR intext:"syntax error"', risk: 'high' },
+          { label: 'Backup Files', query: 'site:' + domain + ' filetype:bak OR filetype:old OR filetype:tmp', risk: 'high' },
+          { label: 'Email Addresses', query: 'site:' + domain + ' intext:"@"', risk: 'low' },
+          { label: 'API Endpoints', query: 'site:' + domain + ' inurl:api OR inurl:v1 OR inurl:v2', risk: 'medium' },
+          { label: 'Public Docs', query: 'site:' + domain + ' filetype:doc OR filetype:pdf "public"', risk: 'low' }
+        ];
+        data = { domain, dorks, totalDorks: dorks.length };
+      }
       if (data.error) { showOsintError('dorkResults', data.error); return; }
       const el = document.getElementById('dorkResults');
       let html = osintTable([
@@ -1275,12 +1467,33 @@
     if (!urls) { showOsintError('urlhausResults', 'Please enter URLs to check.'); return; }
     showOsintLoading('urlhausResults');
     try {
-      const res = await fetch('/api/osint/urlhaus', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ urls })
-      });
-      const data = await res.json();
+      let data;
+      if (hasServer) {
+        data = await osintPost('/api/osint/urlhaus', { urls });
+      } else {
+        const urlArr = urls.split('\n').map((s) => s.trim()).filter(Boolean);
+        data = [];
+        for (const url of urlArr) {
+          try {
+            const res = await fetch('https://urlhaus-api.abuse.ch/v1/url/', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: 'url=' + encodeURIComponent(url)
+            });
+            const j = await res.json();
+            data.push({
+              url,
+              found: j.query_status === 'online',
+              threat: j.threat || null,
+              urlStatus: j.url_status || null,
+              tags: j.tags || [],
+              dateAdded: j.date_added || null
+            });
+          } catch (e) {
+            data.push({ url, found: false, note: 'Lookup failed: ' + e.message });
+          }
+        }
+      }
       if (data.error) { showOsintError('urlhausResults', data.error); return; }
       const el = document.getElementById('urlhausResults');
       let html = '<div class="osint-section">URLhaus Malware Check</div><table>';
@@ -1313,12 +1526,41 @@
     if (!header) { showOsintError('emailResults', 'Please paste email headers.'); return; }
     showOsintLoading('emailResults');
     try {
-      const res = await fetch('/api/osint/email-header', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ header })
-      });
-      const data = await res.json();
+      let data;
+      if (hasServer) {
+        data = await osintPost('/api/osint/email-header', { header });
+      } else {
+        data = { hops: [], auth: {} };
+        const getHeader = (name) => {
+          const regex = new RegExp('^' + name + ':\\s*(.+)$', 'mi');
+          const m = header.match(regex);
+          return m ? m[1].trim() : null;
+        };
+        data.from = getHeader('From');
+        data.to = getHeader('To');
+        data.subject = getHeader('Subject');
+        data.date = getHeader('Date');
+        const receivedHeaders = header.match(/^Received:.*$/gmi) || [];
+        data.hops = receivedHeaders.map((line) => {
+          const hop = {};
+          const fromMatch = line.match(/from\s+([^\s;]+)/i);
+          const byMatch = line.match(/by\s+([^\s;]+)/i);
+          const ipMatch = line.match(/\[([0-9.]+)\]/);
+          const dateMatch = line.match(/;\s*(.+)/);
+          hop.from = fromMatch ? fromMatch[1] : null;
+          hop.by = byMatch ? byMatch[1] : null;
+          hop.ip = ipMatch ? ipMatch[1] : null;
+          hop.date = dateMatch ? dateMatch[1].trim() : null;
+          return hop;
+        }).reverse();
+        data.originIp = data.hops.length ? data.hops[0].ip : null;
+        const spfMatch = header.match(/authentication-results.*spf=(\w+)/i);
+        const dkimMatch = header.match(/authentication-results.*dkim=(\w+)/i);
+        const dmarcMatch = header.match(/authentication-results.*dmarc=(\w+)/i);
+        if (spfMatch) data.auth = { ...data.auth, spf: spfMatch[1], spfResult: spfMatch[1] };
+        if (dkimMatch) data.auth = { ...data.auth, dkim: dkimMatch[1], dkimResult: dkimMatch[1] };
+        if (dmarcMatch) data.auth = { ...data.auth, dmarc: dmarcMatch[1], dmarcResult: dmarcMatch[1] };
+      }
       if (data.error) { showOsintError('emailResults', data.error); return; }
       const el = document.getElementById('emailResults');
       let html = '';
@@ -1372,12 +1614,40 @@
     if (!domain) { showOsintError('reputationResults', 'Please enter a domain.'); return; }
     showOsintLoading('reputationResults');
     try {
-      const res = await fetch('/api/osint/domain-reputation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain })
-      });
-      const data = await res.json();
+      let data;
+      if (hasServer) {
+        data = await osintPost('/api/osint/domain-reputation', { domain });
+      } else {
+        data = { domain, safe: true, threats: [], categories: [], blacklisted: false };
+        try {
+          const res = await fetch('https://rdap.org/domain/' + encodeURIComponent(domain));
+          if (res.ok) {
+            const parsed = await res.json();
+            data.registrar = null;
+            for (const ent of (parsed.entities || [])) {
+              if (ent.vcardArray) {
+                for (const f of ent.vcardArray[1] || []) {
+                  if (f[0] === 'fn') data.registrar = f[3];
+                }
+              }
+            }
+            for (const ev of (parsed.events || [])) {
+              if (ev.eventAction === 'registration') data.created = ev.eventDate;
+            }
+            const status = parsed.status || [];
+            if (status.some((s) => s.toLowerCase().includes('redemption'))) {
+              data.threats.push('Redemption period');
+              data.safe = false;
+            }
+            if (status.some((s) => s.toLowerCase().includes('pending delete'))) {
+              data.threats.push('Pending deletion');
+              data.safe = false;
+            }
+          }
+        } catch (e) { /* ok, basic analysis only */ }
+        if (data.threats.length === 0) data.threats = ['None detected via basic analysis'];
+        data.categories = ['RDAP lookup (basic)'];
+      }
       if (data.error) { showOsintError('reputationResults', data.error); return; }
       const el = document.getElementById('reputationResults');
       let html = osintTable([
@@ -1399,6 +1669,14 @@
   // ---------------- init ----------------
   async function init() {
     wire();
+    await detectServer();
+    if (!hasServer) {
+      const banner = document.createElement('div');
+      banner.className = 'server-banner';
+      banner.innerHTML = 'Running on GitHub Pages (static mode). Site checking works client-side via browser fetch. Server-based OSINT tools are unavailable.';
+      const main = document.querySelector('.content');
+      if (main) main.prepend(banner);
+    }
     await loadCatalog();
     if (state.key) $('#btnBreachScan').textContent = 'Breach Scan (HIBP ON)';
     if (localStorage.getItem('liveMode') === '1') setLive(true);
