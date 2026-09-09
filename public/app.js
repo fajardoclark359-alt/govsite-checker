@@ -49,7 +49,7 @@
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeoutSec * 1000);
     try {
-      const res = await fetch(url, { mode: 'no-cors', signal: ctrl.signal });
+      const res = await fetch(url, { mode: 'no-cors', signal: ctrl.signal, cache: 'no-store' });
       clearTimeout(timer);
       const ms = Date.now() - start;
       return {
@@ -62,28 +62,18 @@
       clearTimeout(timer);
       const ms = Date.now() - start;
       const errStr = (e.message || '').toLowerCase();
+      const name = (e.name || '').toLowerCase();
       let downReason = 'other';
-      if (e.name === 'AbortError' || errStr.includes('timeout')) downReason = 'timeout';
-      else if (errStr.includes('failed') || errStr.includes('refused') || errStr.includes('network')) downReason = 'refused';
-      else if (errStr.includes('cors') || errStr.includes('blocked')) downReason = 'reset';
+      if (name === 'abort' || errStr.includes('timeout') || name === 'timeout') downReason = 'timeout';
+      else if (errStr.includes('failed') || errStr.includes('refused') || errStr.includes('network') || errStr.includes('internet')) downReason = 'refused';
+      else if (errStr.includes('cors') || errStr.includes('blocked') || errStr.includes('csp')) downReason = 'reset';
+      else if (errStr.includes('ssl') || errStr.includes('tls') || errStr.includes('certificate') || errStr.includes('h2')) downReason = 'tls';
       return {
         url: url, usedUrl: url, status: 'DOWN', reachable: false, code: 0, ms: ms,
         error: e.message || 'Connection failed', dns: true, httpNote: '',
         tries: 1, downReason: downReason, hsts: 0, csp: 0, xframe: 0, exposed: []
       };
     }
-  }
-
-  async function clientCheckUrls(urls, timeoutSec) {
-    const concurrency = 20;
-    const results = [];
-    for (let i = 0; i < urls.length; i += concurrency) {
-      const batch = urls.slice(i, i + concurrency);
-      const batchResults = await Promise.all(batch.map((u) => clientCheck(u, timeoutSec)));
-      results.push(...batchResults);
-      batchResults.forEach((r) => { r.checkedAt = Date.now(); r.timeoutSec = timeoutSec; state.results[r.url] = r; });
-    }
-    return results;
   }
 
   // ---------------- classification ----------------
@@ -269,7 +259,20 @@
         if (!Array.isArray(data)) throw new Error('Unexpected server response');
         data.forEach((r) => { r.checkedAt = Date.now(); r.timeoutSec = selectedTimeout(); state.results[r.url] = r; });
       } else {
-        await clientCheckUrls(urls, selectedTimeout());
+        const concurrency = 10;
+        const timeoutSec = selectedTimeout();
+        const total = urls.length;
+        let done = 0;
+        for (let i = 0; i < urls.length; i += concurrency) {
+          const batch = urls.slice(i, i + concurrency);
+          const batchResults = await Promise.all(batch.map((u) => clientCheck(u, timeoutSec)));
+          done += batchResults.length;
+          batchResults.forEach((r) => { r.checkedAt = Date.now(); r.timeoutSec = timeoutSec; state.results[r.url] = r; });
+          renderResults();
+          applyResultDots();
+          const pct = Math.round((done / total) * 100);
+          startProgress('Checked ' + done + '/' + total + ' site(s) (' + pct + '%)...');
+        }
       }
       state.lastRun = new Date();
       renderResults();
