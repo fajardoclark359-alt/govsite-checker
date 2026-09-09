@@ -1276,12 +1276,17 @@
       const el = document.getElementById('ipResults');
       const country = data.country || '-';
       const countryCode = data.countryCode ? ' (' + data.countryCode + ')' : '';
+      const barangay = data.barangay || null;
+      const city = data.city || null;
+      const region = data.regionName || null;
+      const searchQuery = barangay && city ? barangay + ' ' + city + ' barangay contact number' : barangay ? barangay + ' barangay contact number' : null;
+      const searchLink = searchQuery ? '<a href="https://www.google.com/search?q=' + encodeURIComponent(searchQuery) + '" target="_blank" rel="noopener" style="color:var(--brand);font-size:11px;">Search contact number ↗</a>' : '';
       const rows = [
         ['IP Address', data.query || ip],
         ['Country', country + countryCode],
-        ['Region', data.regionName || '-'],
-        ['City', data.city || '-'],
-        ['Barangay / District', data.barangay || '-'],
+        ['Region', region || '-'],
+        ['City', city || '-'],
+        ['Barangay / District', barangay ? barangay + (searchLink ? ' ' + searchLink : '') : '-'],
         ['Zip Code', data.zip || '-'],
         ['Latitude', data.lat != null ? data.lat : '-'],
         ['Longitude', data.lon != null ? data.lon : '-'],
