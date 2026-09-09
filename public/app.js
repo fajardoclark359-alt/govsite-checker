@@ -1152,9 +1152,43 @@
       if (hasServer) {
         data = await osintPost('/api/osint/ip-geolocate', { ip });
       } else {
-        const res = await fetch('http://ip-api.com/json/' + encodeURIComponent(ip) + '?fields=query,country,countryCode,region,regionName,city,zip,lat,lon,timezone,isp,org,as');
-        data = await res.json();
-        if (data.status === 'fail') { data.error = data.message; }
+        let res;
+        try {
+          res = await fetch('https://ipapi.co/' + encodeURIComponent(ip) + '/json/');
+          data = await res.json();
+          if (data.error) { data.error = data.reason || 'Lookup failed'; }
+          else {
+            data.query = data.ip;
+            data.country = data.country_name;
+            data.countryCode = data.country_code;
+            data.regionName = data.region;
+            data.lat = data.latitude;
+            data.lon = data.longitude;
+            data.org = data.org;
+          }
+        } catch (e1) {
+          try {
+            res = await fetch('https://ipwho.is/' + encodeURIComponent(ip));
+            data = await res.json();
+            if (!data.success) { data.error = data.message || 'Lookup failed'; }
+            else {
+              data.query = data.ip;
+              data.country = data.country;
+              data.countryCode = data.country_code;
+              data.regionName = data.region;
+              data.city = data.city;
+              data.zip = data.postal;
+              data.lat = data.latitude;
+              data.lon = data.longitude;
+              data.timezone = data.timezone?.id;
+              data.isp = data.connection?.isp;
+              data.org = data.connection?.org;
+              data.as = data.connection?.asn;
+            }
+          } catch (e2) {
+            data = { error: 'All geolocation APIs failed. Check your connection.' };
+          }
+        }
       }
       if (data.error) { showOsintError('ipResults', data.error); return; }
       const el = document.getElementById('ipResults');
