@@ -1,0 +1,247 @@
+[
+  {
+    "category": "Executive Branch & Portals",
+    "sites": [
+      { "name": "Gov.ph Portal", "url": "https://www.gov.ph" },
+      { "name": "Official Gazette", "url": "https://officialgazette.gov.ph" },
+      { "name": "Office of the President", "url": "https://president.gov.ph" },
+      { "name": "Presidential Communications Office", "url": "https://pcoo.gov.ph" },
+      { "name": "Philippine Information Agency", "url": "https://pia.gov.ph" },
+      { "name": "Open Data Philippines", "url": "https://data.gov.ph" },
+      { "name": "eGov PH", "url": "https://egov.ph" },
+      { "name": "PhilSys National ID", "url": "https://philsys.gov.ph" },
+      { "name": "Climate Change Commission", "url": "https://climate.gov.ph" },
+      { "name": "Office of the Vice President", "url": "https://ovp.gov.ph" },
+      { "name": "National Economic & Development Authority", "url": "https://neda.gov.ph" },
+      { "name": "Philippine Statistics Authority", "url": "https://psa.gov.ph" },
+      { "name": "Civil Service Commission", "url": "https://csc.gov.ph" },
+      { "name": "Commission on Audit", "url": "https://coa.gov.ph" }
+    ]
+  },
+  {
+    "category": "Cabinet Departments",
+    "sites": [
+      { "name": "Agriculture (DA)", "url": "https://da.gov.ph" },
+      { "name": "Agrarian Reform (DAR)", "url": "https://dar.gov.ph" },
+      { "name": "Budget & Management (DBM)", "url": "https://dbm.gov.ph" },
+      { "name": "Education (DepEd)", "url": "https://deped.gov.ph" },
+      { "name": "Energy (DOE)", "url": "https://doe.gov.ph" },
+      { "name": "Environment & Natural Resources (DENR)", "url": "https://denr.gov.ph" },
+      { "name": "Finance (DOF)", "url": "https://dof.gov.ph" },
+      { "name": "Foreign Affairs (DFA)", "url": "https://dfa.gov.ph" },
+      { "name": "Health (DOH)", "url": "https://doh.gov.ph" },
+      { "name": "Human Settlements & Development (DHSUD)", "url": "https://dhsud.gov.ph" },
+      { "name": "Information & Communications Technology (DICT)", "url": "https://dict.gov.ph" },
+      { "name": "Interior & Local Government (DILG)", "url": "https://dilg.gov.ph" },
+      { "name": "Justice (DOJ)", "url": "https://doj.gov.ph" },
+      { "name": "Labor & Employment (DOLE)", "url": "https://dole.gov.ph" },
+      { "name": "National Defense (DND)", "url": "https://dnd.gov.ph" },
+      { "name": "Public Works & Highways (DPWH)", "url": "https://dpwh.gov.ph" },
+      { "name": "Science & Technology (DOST)", "url": "https://dost.gov.ph" },
+      { "name": "Social Welfare & Development (DSWD)", "url": "https://dswd.gov.ph" },
+      { "name": "Tourism (DOT)", "url": "https://tourism.gov.ph" },
+      { "name": "Transportation (DOTr)", "url": "https://dotr.gov.ph" },
+      { "name": "Trade & Industry (DTI)", "url": "https://www.dti.gov.ph" }
+    ]
+  },
+  {
+    "category": "Commissions & Regulators",
+    "sites": [
+      { "name": "Bangko Sentral ng Pilipinas", "url": "https://www.bsp.gov.ph" },
+      { "name": "Commission on Elections (COMELEC)", "url": "https://comelec.gov.ph" },
+      { "name": "Competition Commission (PCC)", "url": "https://phcc.gov.ph" },
+      { "name": "Energy Regulatory Commission (ERC)", "url": "https://erc.gov.ph" },
+      { "name": "Higher Education (CHED)", "url": "https://ched.gov.ph" },
+      { "name": "Insurance Commission", "url": "https://insurance.gov.ph" },
+      { "name": "Labor Arbitration (NLRC)", "url": "https://nlrc.gov.ph" },
+      { "name": "National Privacy Commission", "url": "https://privacy.gov.ph" },
+      { "name": "Napolcom", "url": "https://napolcom.gov.ph" },
+      { "name": "National Telecommunications Commission", "url": "https://ntc.gov.ph" },
+      { "name": "Ombudsman", "url": "https://ombudsman.gov.ph" },
+      { "name": "Philippine Statistics Authority", "url": "https://psa.gov.ph" },
+      { "name": "Professional Regulation Commission (PRC)", "url": "https://prc.gov.ph" },
+      { "name": "Securities & Exchange Commission (SEC)", "url": "https://sec.gov.ph" },
+      { "name": "National Electrification Administration (NEA)", "url": "https://nea.gov.ph" },
+      { "name": "National Housing Authority (NHA)", "url": "https://nha.gov.ph" }
+    ]
+  },
+  {
+    "category": "Agencies, Bureaus & Services",
+    "sites": [
+      { "name": "Bureau of Customs", "url": "https://customs.gov.ph" },
+      { "name": "Bureau of Internal Revenue (BIR)", "url": "https://www.bir.gov.ph" },
+      { "name": "Civil Aviation Authority (CAAP)", "url": "https://caap.gov.ph" },
+      { "name": "Food & Drug Administration (FDA)", "url": "https://www.fda.gov.ph" },
+      { "name": "Government Procurement Policy Board", "url": "https://gppb.gov.ph" },
+      { "name": "Intellectual Property Office (IPOPHL)", "url": "https://ipophil.gov.ph" },
+      { "name": "Land Transportation Office (LTO)", "url": "https://lto.gov.ph" },
+      { "name": "Land Transportation Franchising Board (LTFRB)", "url": "https://ltfrb.gov.ph" },
+      { "name": "Metropolitan Manila Development Authority (MMDA)", "url": "https://mmda.gov.ph" },
+      { "name": "National Bureau of Investigation (NBI)", "url": "https://nbi.gov.ph" },
+      { "name": "NDRRMC", "url": "https://ndrrmc.gov.ph" },
+      { "name": "PAGASA Weather", "url": "https://pagasa.dost.gov.ph" },
+      { "name": "PEZA", "url": "https://peza.gov.ph" },
+      { "name": "PHIVOLCS", "url": "https://www.phivolcs.dost.gov.ph" },
+      { "name": "Philippine Coconut Authority", "url": "https://pca.gov.ph" },
+      { "name": "Philippine Drug Enforcement Agency", "url": "https://pdea.gov.ph" },
+      { "name": "Philippine Health Insurance (PhilHealth)", "url": "https://www.philhealth.gov.ph" },
+      { "name": "Philippine Overseas Employment Agency", "url": "https://poea.gov.ph" },
+      { "name": "Philippine Space Agency", "url": "https://philspace.gov.ph" },
+      { "name": "Social Housing Finance Corporation", "url": "https://shfc.gov.ph" },
+      { "name": "Technical Education & Skills Development (TESDA)", "url": "https://tesda.gov.ph" },
+      { "name": "National Police Commission", "url": "https://napolcom.gov.ph" },
+      { "name": "Philippine Statistics Authority (PSA)", "url": "https://psa.gov.ph" }
+    ]
+  },
+  {
+    "category": "Social Services & Pension",
+    "sites": [
+      { "name": "Commission on Filipinos Overseas", "url": "https://cfo.gov.ph" },
+      { "name": "Government Service Insurance System (GSIS)", "url": "https://gsis.gov.ph" },
+      { "name": "National Food Authority", "url": "https://nfa.gov.ph" },
+      { "name": "National Housing Authority", "url": "https://nha.gov.ph" },
+      { "name": "National Irrigation Administration", "url": "https://nia.gov.ph" },
+      { "name": "National Youth Commission", "url": "https://nyc.gov.ph" },
+      { "name": "Overseas Workers Welfare Administration (OWWA)", "url": "https://owwa.gov.ph" },
+      { "name": "Pag-IBIG Fund", "url": "https://pagibigfund.gov.ph" },
+      { "name": "Philippine Health Insurance (PhilHealth)", "url": "https://www.philhealth.gov.ph" },
+      { "name": "Philippine Postal Corporation", "url": "https://philpost.gov.ph" },
+      { "name": "Philippine Sports Commission", "url": "https://psc.gov.ph" },
+      { "name": "Social Security System (SSS)", "url": "https://www.sss.gov.ph" },
+      { "name": "Home Development Mutual Fund", "url": "https://hdmf.gov.ph" }
+    ]
+  },
+  {
+    "category": "Security & Law Enforcement",
+    "sites": [
+      { "name": "Armed Forces of the Philippines", "url": "https://www.afp.mil.ph" },
+      { "name": "Bureau of Fire Protection (BFP)", "url": "https://bfp.gov.ph" },
+      { "name": "Bureau of Jail Management & Penology (BJMP)", "url": "https://bjmp.gov.ph" },
+      { "name": "Philippine Coast Guard", "url": "https://coastguard.gov.ph" },
+      { "name": "Philippine Drug Enforcement Agency (PDEA)", "url": "https://pdea.gov.ph" },
+      { "name": "Philippine National Police (PNP)", "url": "https://pnp.gov.ph" },
+      { "name": "Philippine Air Force", "url": "https://www.paf.mil.ph" },
+      { "name": "Philippine Army", "url": "https://army.mil.ph" },
+      { "name": "Philippine Navy", "url": "https://navy.mil.ph" },
+      { "name": "National Security Council", "url": "https://nsc.gov.ph" },
+      { "name": "Cybercrime Investigation & Coordinating Center (CICC)", "url": "https://cicc.gov.ph" }
+    ]
+  },
+  {
+    "category": "Judiciary & Legislature",
+    "sites": [
+      { "name": "Court of Appeals", "url": "https://ca.judiciary.gov.ph" },
+      { "name": "Court of Tax Appeals", "url": "https://cta.judiciary.gov.ph" },
+      { "name": "House of Representatives", "url": "https://congress.gov.ph" },
+      { "name": "Judiciary Portal", "url": "https://judiciary.gov.ph" },
+      { "name": "Sandiganbayan", "url": "https://sb.judiciary.gov.ph" },
+      { "name": "Senate of the Philippines", "url": "https://senate.gov.ph" },
+      { "name": "Supreme Court", "url": "https://sc.judiciary.gov.ph" }
+    ]
+  },
+  {
+    "category": "Local Government Units — NCR",
+    "sites": [
+      { "name": "Caloocan City", "url": "https://caloocan.gov.ph" },
+      { "name": "Las Pinas City", "url": "https://laspinas.gov.ph" },
+      { "name": "Makati City", "url": "https://www.makati.gov.ph" },
+      { "name": "Malabon City", "url": "https://malabon.gov.ph" },
+      { "name": "Mandaluyong City", "url": "https://mandaluyong.gov.ph" },
+      { "name": "Manila City", "url": "https://manila.gov.ph" },
+      { "name": "Marikina City", "url": "https://marikina.gov.ph" },
+      { "name": "Muntinlupa City", "url": "https://muntinlupa.gov.ph" },
+      { "name": "Navotas City", "url": "https://navotas.gov.ph" },
+      { "name": "Parañaque City", "url": "https://paranaquecity.gov.ph" },
+      { "name": "Pasay City", "url": "https://pasay.gov.ph" },
+      { "name": "Pasig City", "url": "https://pasigcity.gov.ph" },
+      { "name": "Pateros", "url": "https://pateros.gov.ph" },
+      { "name": "Quezon City", "url": "https://quezoncity.gov.ph" },
+      { "name": "San Juan City", "url": "https://sanjuan.gov.ph" },
+      { "name": "Taguig City", "url": "https://taguig.gov.ph" },
+      { "name": "Valenzuela City", "url": "https://valenzuela.gov.ph" }
+    ]
+  },
+  {
+    "category": "Local Government Units — Provinces & Cities",
+    "sites": [
+      { "name": "Antipolo City", "url": "https://antipolocity.gov.ph" },
+      { "name": "Baguio City", "url": "https://baguio.gov.ph" },
+      { "name": "Bacolod City", "url": "https://bacolod.gov.ph" },
+      { "name": "Batangas Province", "url": "https://batangas.gov.ph" },
+      { "name": "Bulacan Province", "url": "https://bulacan.gov.ph" },
+      { "name": "Cagayan de Oro City", "url": "https://cagayandeoro.gov.ph" },
+      { "name": "Cavite Province", "url": "https://cavite.gov.ph" },
+      { "name": "Cebu City", "url": "https://cebucity.gov.ph" },
+      { "name": "Cebu Province", "url": "https://cebu.gov.ph" },
+      { "name": "Davao City", "url": "https://davaocity.gov.ph" },
+      { "name": "Davao del Sur Province", "url": "https://davaodelsur.gov.ph" },
+      { "name": "General Santos City", "url": "https://gensantocity.gov.ph" },
+      { "name": "Iloilo City", "url": "https://iloilocity.gov.ph" },
+      { "name": "Iloilo Province", "url": "https://iloilo.gov.ph" },
+      { "name": "Laguna Province", "url": "https://laguna.gov.ph" },
+      { "name": "Lapu-Lapu City", "url": "https://lapulapucity.gov.ph" },
+      { "name": "Luzon (Region III)", "url": "https://region3.gov.ph" },
+      { "name": "Mandaue City", "url": "https://mandauecity.gov.ph" },
+      { "name": "Naga City", "url": "https://nagacity.gov.ph" },
+      { "name": "Olongapo City", "url": "https://olongapo.gov.ph" },
+      { "name": "Pampanga Province", "url": "https://pampanga.gov.ph" },
+      { "name": "Rizal Province", "url": "https://rizal.gov.ph" },
+      { "name": "Tacloban City", "url": "https://tacloban.gov.ph" },
+      { "name": "Zamboanga City", "url": "https://zamboangacity.gov.ph" }
+    ]
+  },
+  {
+    "category": "Local Government Units — BARMM & Regions",
+    "sites": [
+      { "name": "Autonomous Region in Muslim Mindanao (BARMM)", "url": "https://bangsamoro.gov.ph" },
+      { "name": "BARMM Government", "url": "https://www.bangsamoro.gov.ph" },
+      { "name": "Cordillera Administrative Region (CAR)", "url": "https://car.gov.ph" },
+      { "name": "Region I — Ilocos", "url": "https://region1.gov.ph" },
+      { "name": "Region II — Cagayan Valley", "url": "https://region2.gov.ph" },
+      { "name": "Region IV-A — CALABARZON", "url": "https://region4a.gov.ph" },
+      { "name": "Region IV-B — MIMAROPA", "url": "https://region4b.gov.ph" },
+      { "name": "Region V — Bicol", "url": "https://region5.gov.ph" },
+      { "name": "Region VI — Western Visayas", "url": "https://region6.gov.ph" },
+      { "name": "Region VII — Central Visayas", "url": "https://region7.gov.ph" },
+      { "name": "Region VIII — Eastern Visayas", "url": "https://region8.gov.ph" },
+      { "name": "Region IX — Zamboanga Peninsula", "url": "https://region9.gov.ph" },
+      { "name": "Region X — Northern Mindanao", "url": "https://region10.gov.ph" },
+      { "name": "Region XI — Davao Region", "url": "https://region11.gov.ph" },
+      { "name": "Region XII — SOCCSKSARGEN", "url": "https://region12.gov.ph" },
+      { "name": "Region XIII — Caraga", "url": "https://region13.gov.ph" }
+    ]
+  },
+  {
+    "category": "National Institutions, Education & Culture",
+    "sites": [
+      { "name": "Cultural Center of the Philippines", "url": "https://ccp.edu.ph" },
+      { "name": "Development Academy of the Philippines", "url": "https://dap.edu.ph" },
+      { "name": "National Archives of the Philippines", "url": "https://nationalarchives.gov.ph" },
+      { "name": "National Commission for Culture & the Arts", "url": "https://ncca.gov.ph" },
+      { "name": "National Historical Commission", "url": "https://nhcp.gov.ph" },
+      { "name": "National Library of the Philippines", "url": "https://nlp.gov.ph" },
+      { "name": "National Museum of the Philippines", "url": "https://nationalmuseum.gov.ph" },
+      { "name": "Philippine Information Agency", "url": "https://pia.gov.ph" },
+      { "name": "Polytechnic University of the Philippines", "url": "https://pup.edu.ph" },
+      { "name": "University of the Philippines", "url": "https://up.edu.ph" },
+      { "name": "Philippine Normal University", "url": "https://pnu.edu.ph" },
+      { "name": "Mindanao State University", "url": "https://msu.edu.ph" },
+      { "name": "Silliman University", "url": "https://su.edu.ph" }
+    ]
+  },
+  {
+    "category": "Government-Linked Corporations & GOCCs",
+    "sites": [
+      { "name": "Development Bank of the Philippines", "url": "https://dbp.gov.ph" },
+      { "name": "Land Bank of the Philippines", "url": "https://landbank.gov.ph" },
+      { "name": "Philippine Amusement & Gaming Corp (PAGCOR)", "url": "https://pagcor.ph" },
+      { "name": "Philippine Health Insurance (PhilHealth)", "url": "https://www.philhealth.gov.ph" },
+      { "name": "Philippine National Oil Company", "url": "https://pnoc.com.ph" },
+      { "name": "Philippine Ports Authority", "url": "https://ppa.gov.ph" },
+      { "name": "Power Sector Assets & Liabilities Mgmt (PSALM)", "url": "https://psalm.gov.ph" },
+      { "name": "Social Housing Finance Corporation", "url": "https://shfc.gov.ph" },
+      { "name": "Subic Bay Metropolitan Authority", "url": "https://subic.gov.ph" },
+      { "name": "Clark Development Corporation", "url": "https://clark.com.ph" }
+    ]
+  }
+]

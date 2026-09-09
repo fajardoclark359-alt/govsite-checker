@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GovSite Checker — Government Website Monitor</title>
+<link rel="stylesheet" href="style.css?v=5">
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo">&#9878;</div>
+      <div>
+        <div class="brand-name">GovSite Checker</div>
+        <div class="brand-sub">Developer: Clark Fajardo</div>
+      </div>
+    </div>
+
+    <div class="search-wrap">
+      <input id="search" type="search" placeholder="Search sites..." autocomplete="off">
+    </div>
+
+    <div id="catalog" class="catalog"></div>
+
+    <div class="sidebar-footer">
+      <div class="add-url">
+        <input id="customUrl" type="text" placeholder="Add URL to check (comma separated)">
+        <button id="btnAddUrl" title="Add and check">+ Add</button>
+      </div>
+      <button id="btnSettings" class="btn-ghost">&#9881; HIBP Breach Key</button>
+      <div class="dev-credit">Developer: Clark Fajardo</div>
+    </div>
+  </aside>
+
+  <main class="content">
+    <nav class="tab-bar">
+      <button class="tab active" data-tab="govsite">&#9878; GovSite Monitor</button>
+      <button class="tab" data-tab="osint">&#128270; OSINT Tools</button>
+    </nav>
+
+    <!-- GOVSITE MONITOR TAB -->
+    <div id="tab-govsite" class="tab-panel active">
+      <header class="topbar">
+        <div class="topbar-title">
+          <h1>Status Dashboard</h1>
+          <p id="lastRun">No checks run yet.</p>
+        </div>
+        <div class="chips" id="chips"></div>
+      </header>
+
+      <div class="toolbar">
+        <button id="btnCheckSel" class="btn btn-primary">Check Selected</button>
+        <button id="btnCheckAll" class="btn">Check All</button>
+        <button id="btnCheckDown" class="btn">Re-check Down</button>
+        <button id="btnCheckFailed" class="btn" title="Re-check failed / breached">Re-check Flags</button>
+        <button id="btnBreachScan" class="btn">Breach Scan</button>
+        <button id="btnLive" class="btn" title="Continuously re-check sites at the chosen interval in real time">LIVE OFF</button>
+        <select id="liveInterval" title="Auto-refresh interval" class="interval">
+          <option value="30">30s</option>
+          <option value="60" selected>60s</option>
+          <option value="120">2m</option>
+          <option value="300">5m</option>
+        </select>
+        <select id="timeoutSel" title="How long to wait for a response before declaring DOWN" class="interval">
+          <option value="10">10s timeout</option>
+          <option value="15" selected>15s timeout</option>
+          <option value="30">30s timeout</option>
+          <option value="60">60s timeout</option>
+        </select>
+        <span class="spacer"></span>
+        <button id="btnExportExcel" class="btn">Export Excel (.xlsx)</button>
+        <button id="btnExportCsv" class="btn">Export Table (CSV)</button>
+        <button id="btnCopyReport" class="btn">Copy Report</button>
+      </div>
+
+      <div id="progress" class="progress hidden">
+        <div class="progress-bar" id="progressBar"></div>
+        <span id="progressLabel"></span>
+      </div>
+
+      <div id="results" class="cards"></div>
+      <div id="empty" class="empty">
+        <div class="empty-icon">&#128269;</div>
+        <h3>No results yet</h3>
+        <p>Select websites on the left and hit <strong>Check Selected</strong>, or check everything at once.</p>
+      </div>
+    </div>
+
+    <!-- OSINT TOOLS TAB -->
+    <div id="tab-osint" class="tab-panel">
+      <header class="topbar">
+        <div class="topbar-title">
+          <h1>OSINT Intelligence Tools</h1>
+          <p>Open Source Intelligence tools for cybersecurity research, threat analysis, and reconnaissance.</p>
+        </div>
+      </header>
+
+      <div class="osint-grid">
+        <!-- IP Geolocation -->
+        <div class="osint-card">
+          <div class="osint-card-header">
+            <div class="osint-icon">&#127757;</div>
+            <div>
+              <h3>IP Geolocation</h3>
+              <p>Geolocate an IP address to find country, city, ISP, ASN, and coordinates.</p>
+            </div>
+          </div>
+          <div class="osint-input-row">
+            <input id="ipInput" type="text" placeholder="Enter IP address (e.g. 8.8.8.8)" autocomplete="off">
+            <button id="btnIpLookup" class="btn btn-primary">Lookup</button>
+          </div>
+          <div id="ipResults" class="osint-results"></div>
+        </div>
+
+        <!-- Reverse IP Lookup -->
+        <div class="osint-card">
+          <div class="osint-card-header">
+            <div class="osint-icon">&#128269;</div>
+            <div>
+              <h3>Reverse IP Lookup</h3>
+              <p>Find other domains hosted on the same IP address. Useful for shared hosting reconnaissance.</p>
+            </div>
+          </div>
+          <div class="osint-input-row">
+            <input id="reverseIpInput" type="text" placeholder="Enter IP address (e.g. 8.8.8.8)" autocomplete="off">
+            <button id="btnReverseIp" class="btn btn-primary">Lookup</button>
+          </div>
+          <div id="reverseIpResults" class="osint-results"></div>
+        </div>
+
+        <!-- DNS Enumeration -->
+        <div class="osint-card osint-card-wide">
+          <div class="osint-card-header">
+            <div class="osint-icon">&#128279;</div>
+            <div>
+              <h3>DNS Enumeration</h3>
+              <p>Full DNS record enumeration including A, AAAA, MX, NS, TXT, SOA, CNAME, and SRV records with reverse DNS.</p>
+            </div>
+          </div>
+          <div class="osint-input-row">
+            <input id="dnsInput" type="text" placeholder="Enter domain (e.g. gov.ph)" autocomplete="off">
+            <button id="btnDnsLookup" class="btn btn-primary">Enumerate</button>
+          </div>
+          <div id="dnsResults" class="osint-results"></div>
+        </div>
+
+        <!-- WHOIS Lookup -->
+        <div class="osint-card">
+          <div class="osint-card-header">
+            <div class="osint-icon">&#128196;</div>
+            <div>
+              <h3>WHOIS / RDAP Lookup</h3>
+              <p>Retrieve domain registration data including registrar, dates, status, and name servers.</p>
+            </div>
+          </div>
+          <div class="osint-input-row">
+            <input id="whoisInput" type="text" placeholder="Enter domain (e.g. gov.ph)" autocomplete="off">
+            <button id="btnWhoisLookup" class="btn btn-primary">Lookup</button>
+          </div>
+          <div id="whoisResults" class="osint-results"></div>
+        </div>
+
+        <!-- SSL/TLS Certificate Analysis -->
+        <div class="osint-card">
+          <div class="osint-card-header">
+            <div class="osint-icon">&#128274;</div>
+            <div>
+              <h3>SSL/TLS Certificate Analyzer</h3>
+              <p>Analyze SSL certificates: issuer, expiry, subject alternatives, cipher strength, and protocol version.</p>
+            </div>
+          </div>
+          <div class="osint-input-row">
+            <input id="sslInput" type="text" placeholder="Enter domain (e.g. gov.ph)" autocomplete="off">
+            <button id="btnSslCheck" class="btn btn-primary">Analyze</button>
+          </div>
+          <div id="sslResults" class="osint-results"></div>
+        </div>
+
+        <!-- Port Scanner -->
+        <div class="osint-card">
+          <div class="osint-card-header">
+            <div class="osint-icon">&#128220;</div>
+            <div>
+              <h3>Port Scanner</h3>
+              <p>Scan common ports to identify open services: HTTP, SSH, FTP, databases, and more.</p>
+            </div>
+          </div>
+          <div class="osint-input-row">
+            <input id="portInput" type="text" placeholder="Enter domain or IP (e.g. gov.ph)" autocomplete="off">
+            <button id="btnPortScan" class="btn btn-primary">Scan</button>
+          </div>
+          <div id="portResults" class="osint-results"></div>
+        </div>
+
+        <!-- Technology Detection -->
+        <div class="osint-card">
+          <div class="osint-card-header">
+            <div class="osint-icon">&#129520;</div>
+            <div>
+              <h3>Technology Detection</h3>
+              <p>Detect web technologies: server, CMS, frameworks, analytics, CDN, and programming languages.</p>
+            </div>
+          </div>
+          <div class="osint-input-row">
+            <input id="techInput" type="text" placeholder="Enter URL (e.g. https://gov.ph)" autocomplete="off">
+            <button id="btnTechDetect" class="btn btn-primary">Detect</button>
+          </div>
+          <div id="techResults" class="osint-results"></div>
+        </div>
+
+        <!-- Subdomain Discovery -->
+        <div class="osint-card">
+          <div class="osint-card-header">
+            <div class="osint-icon">&#127760;</div>
+            <div>
+              <h3>Subdomain Discovery</h3>
+              <p>Discover subdomains by checking DNS for common names. Find hidden services and infrastructure.</p>
+            </div>
+          </div>
+          <div class="osint-input-row">
+            <input id="subdomainInput" type="text" placeholder="Enter domain (e.g. gov.ph)" autocomplete="off">
+            <button id="btnSubdomain" class="btn btn-primary">Discover</button>
+          </div>
+          <div id="subdomainResults" class="osint-results"></div>
+        </div>
+
+        <!-- Security Headers Check -->
+        <div class="osint-card osint-card-wide">
+          <div class="osint-card-header">
+            <div class="osint-icon">&#128737;</div>
+            <div>
+              <h3>Security Headers Analysis</h3>
+              <p>Comprehensive HTTP security headers audit with grading. Checks HSTS, CSP, CORS, cookies, and more.</p>
+            </div>
+          </div>
+          <div class="osint-input-row">
+            <input id="secHeadersInput" type="text" placeholder="Enter URL (e.g. https://gov.ph)" autocomplete="off">
+            <button id="btnSecHeaders" class="btn btn-primary">Analyze</button>
+          </div>
+          <div id="secHeadersResults" class="osint-results"></div>
+        </div>
+
+        <!-- Google Dorking -->
+        <div class="osint-card">
+          <div class="osint-card-header">
+            <div class="osint-icon">&#128270;</div>
+            <div>
+              <h3>Google Dorking Helper</h3>
+              <p>Generate Google dork queries to find exposed files, login pages, config leaks, and more.</p>
+            </div>
+          </div>
+          <div class="osint-input-row">
+            <input id="dorkInput" type="text" placeholder="Enter domain (e.g. gov.ph)" autocomplete="off">
+            <button id="btnDorks" class="btn btn-primary">Generate</button>
+          </div>
+          <div id="dorkResults" class="osint-results"></div>
+        </div>
+
+        <!-- URLhaus Malware Check -->
+        <div class="osint-card">
+          <div class="osint-card-header">
+            <div class="osint-icon">&#128163;</div>
+            <div>
+              <h3>URLhaus Malware Check</h3>
+              <p>Check URLs against the URLhaus malware database. Identify malicious URLs and phishing sites.</p>
+            </div>
+          </div>
+          <div class="osint-input-col">
+            <textarea id="urlhausInput" rows="3" placeholder="Enter URLs to check (one per line)&#10;&#10;Example:&#10;https://suspicious-site.com/malware.exe&#10;http://phishing-example.com/login"></textarea>
+            <button id="btnUrlhaus" class="btn btn-primary">Check URLs</button>
+          </div>
+          <div id="urlhausResults" class="osint-results"></div>
+        </div>
+
+        <!-- Email Header Analysis -->
+        <div class="osint-card osint-card-wide">
+          <div class="osint-card-header">
+            <div class="osint-icon">&#128231;</div>
+            <div>
+              <h3>Email Header Analysis</h3>
+              <p>Paste raw email headers to trace the originating IP address, check SPF/DKIM, and geolocate the sender.</p>
+            </div>
+          </div>
+          <div class="osint-input-col">
+            <textarea id="emailHeaderInput" rows="6" placeholder="Paste raw email headers here...&#10;&#10;Example:&#10;Received: from mail.example.com (192.168.1.1)&#10;  by mx.google.com; ..."></textarea>
+            <button id="btnEmailAnalyze" class="btn btn-primary">Analyze Headers</button>
+          </div>
+          <div id="emailResults" class="osint-results"></div>
+        </div>
+
+        <!-- Domain Reputation -->
+        <div class="osint-card osint-card-wide">
+          <div class="osint-card-header">
+            <div class="osint-icon">&#9888;</div>
+            <div>
+              <h3>Domain Reputation & Threat Intelligence</h3>
+              <p>Check if a domain is associated with malware, phishing, typosquatting, or other threats. Includes brand impersonation detection.</p>
+            </div>
+          </div>
+          <div class="osint-input-row">
+            <input id="reputationInput" type="text" placeholder="Enter domain (e.g. example.com)" autocomplete="off">
+            <button id="btnReputationCheck" class="btn btn-primary">Check</button>
+          </div>
+          <div id="reputationResults" class="osint-results"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="modal" class="modal hidden">
+    <div class="modal-box">
+      <h3>Have I Been Pwned — Breach Classification</h3>
+      <p class="modal-note">
+        Enter an optional HIBP API v3 key to query real breach data per domain.
+        Without a key, the app still classifies each site using automated
+        exposure probes (sensitive files) and security-header checks.
+      </p>
+      <input id="hibpKey" type="password" placeholder="HaveIBeenPwned API key (e.g. from haveibeenpwned.com/api/access)..." autocomplete="off">
+      <div class="modal-actions">
+        <button id="btnKeySave" class="btn btn-primary">Save</button>
+        <button id="btnKeyClear" class="btn">Clear</button>
+        <button id="btnKeyCancel" class="btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+<script src="app.js?v=5"></script>
+</body>
+</html>

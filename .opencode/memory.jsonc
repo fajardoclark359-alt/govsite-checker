@@ -1,0 +1,7 @@
+{
+  "dbPath": "~/.config/opencode/memory/memory.db",
+  "retentionDays": 90,
+  "privacyStrip": true,
+  "enableSemanticSearch": true,
+  "logLevel": "info"
+}
