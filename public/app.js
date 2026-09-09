@@ -261,7 +261,17 @@
       status.textContent = cl.level === 'clean' || cl.level === 'risk' || cl.level === 'restricted' ? 'ONLINE' : 'OFFLINE';
       status.className = 'site-status ' + (cl.level === 'clean' || cl.level === 'risk' || cl.level === 'restricted' ? 'online' : 'offline');
     }
-    row.append(cb, dot, nm, status);
+    const b = state.breach[hostOf(s.url)];
+    const breachBadge = document.createElement('span');
+    breachBadge.className = 'site-status';
+    breachBadge.id = 'breach-' + s.url.replace(/[^a-z0-9]/gi, '_');
+    if (b && b.breached) {
+      const names = (b.names || []).join(', ');
+      breachBadge.textContent = 'BREACHED';
+      breachBadge.className = 'site-status breach';
+      breachBadge.title = names || 'Listed in HaveIBeenPwned';
+    }
+    row.append(cb, dot, nm, status, breachBadge);
     return row;
   }
 
@@ -279,6 +289,21 @@
           statusEl.className = 'site-status ' + (isUp ? 'online' : 'offline');
         }
       }
+    });
+    Object.keys(state.breach).forEach((host) => {
+      const b = state.breach[host];
+      if (!b || !b.breached) return;
+      Object.keys(state.results).forEach((url) => {
+        if (hostOf(url) !== host) return;
+        const id = url.replace(/[^a-z0-9]/gi, '_');
+        const el = document.getElementById('breach-' + id);
+        if (el) {
+          const names = (b.names || []).join(', ');
+          el.textContent = 'BREACHED';
+          el.className = 'site-status breach';
+          el.title = names || 'Listed in HaveIBeenPwned';
+        }
+      });
     });
   }
 
