@@ -95,8 +95,16 @@
 
   // ---------------- catalog / sidebar ----------------
   async function loadCatalog() {
-    const res = await fetch('/api/sites');
-    state.catalog = await res.json();
+    let data = null;
+    try {
+      const res = await fetch('/api/sites');
+      if (res.ok) data = await res.json();
+    } catch (e) { /* fall through to static copy */ }
+    if (!data) {
+      const res = await fetch('sites.json');
+      data = await res.json();
+    }
+    state.catalog = data;
     state.catalog.forEach((c) => c.sites.forEach((s) => { state.checked[s.url] = true; }));
     buildSidebar();
     updateCheckButtons();
