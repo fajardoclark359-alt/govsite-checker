@@ -100,6 +100,17 @@ body {
 .site-row .site-dot.down { background: var(--red);   box-shadow: 0 0 6px var(--red); }
 .site-row .site-dot.risk { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
 .site-row .site-dot.breach { background: #f43f5e; box-shadow: 0 0 6px #f43f5e; }
+.site-row .site-dot.error  { background: var(--red);   box-shadow: 0 0 6px var(--red); }
+.site-row .site-dot.exposed { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; }
+.site-row .site-dot.restricted { background: #a78bfa; box-shadow: 0 0 6px #a78bfa; }
+.site-row .site-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.site-row .site-status {
+  font-size: 10px; font-weight: 600; letter-spacing: .3px;
+  padding: 1px 6px; border-radius: 4px; flex-shrink: 0;
+  text-transform: uppercase;
+}
+.site-row .site-status.online  { color: var(--green); background: var(--green-bg); }
+.site-row .site-status.offline { color: var(--red);   background: var(--red-bg); }
 
 .sidebar-footer { border-top: 1px solid var(--line); padding: 10px 16px; display: flex; flex-direction: column; gap: 8px; }
 .add-url { display: flex; gap: 6px; }

@@ -251,15 +251,34 @@
       updateCheckButtons();
     });
     const nm = document.createElement('span');
+    nm.className = 'site-name';
     nm.textContent = s.name;
-    row.append(cb, dot, nm);
+    const status = document.createElement('span');
+    status.className = 'site-status';
+    status.id = 'status-' + s.url.replace(/[^a-z0-9]/gi, '_');
+    const cl = classify(s.url);
+    if (cl.level !== 'unknown') {
+      status.textContent = cl.level === 'clean' || cl.level === 'risk' || cl.level === 'restricted' ? 'ONLINE' : 'OFFLINE';
+      status.className = 'site-status ' + (cl.level === 'clean' || cl.level === 'risk' || cl.level === 'restricted' ? 'online' : 'offline');
+    }
+    row.append(cb, dot, nm, status);
     return row;
   }
 
   function applyResultDots() {
     Object.keys(state.results).forEach((url) => {
-      const el = document.getElementById('dot-' + url.replace(/[^a-z0-9]/gi, '_'));
-      if (el) el.className = 'site-dot ' + classify(url).level;
+      const id = url.replace(/[^a-z0-9]/gi, '_');
+      const dotEl = document.getElementById('dot-' + id);
+      const statusEl = document.getElementById('status-' + id);
+      if (dotEl) dotEl.className = 'site-dot ' + classify(url).level;
+      if (statusEl) {
+        const cl = classify(url);
+        if (cl.level !== 'unknown') {
+          const isUp = cl.level === 'clean' || cl.level === 'risk' || cl.level === 'restricted';
+          statusEl.textContent = isUp ? 'ONLINE' : 'OFFLINE';
+          statusEl.className = 'site-status ' + (isUp ? 'online' : 'offline');
+        }
+      }
     });
   }
 
