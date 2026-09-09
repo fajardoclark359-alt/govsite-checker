@@ -34,7 +34,10 @@
 
   async function detectServer() {
     try {
-      const res = await fetch('/api/sites', { method: 'GET', signal: AbortSignal.timeout(3000) });
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 3000);
+      const res = await fetch('/api/sites', { method: 'GET', signal: controller.signal });
+      clearTimeout(timer);
       hasServer = res.ok;
     } catch (e) {
       hasServer = false;
@@ -153,8 +156,21 @@
       if (res.ok) data = await res.json();
     } catch (e) { /* fall through to static copy */ }
     if (!data) {
-      const res = await fetch('sites.json');
-      data = await res.json();
+      try {
+        const res = await fetch('sites.json');
+        if (res.ok) data = await res.json();
+      } catch (e) { /* fall through to empty */ }
+    }
+    if (!data) {
+      try {
+        const res = await fetch('./sites.json');
+        if (res.ok) data = await res.json();
+      } catch (e) { /* give up */ }
+    }
+    if (!data) {
+      const el = document.getElementById('catalog');
+      if (el) el.innerHTML = '<div class="osint-error" style="padding:12px;">Could not load site catalog. Check your connection or refresh the page.</div>';
+      return;
     }
     state.catalog = data;
     state.catalog.forEach((c) => c.sites.forEach((s) => { state.checked[s.url] = true; }));
@@ -1669,15 +1685,15 @@
   // ---------------- init ----------------
   async function init() {
     wire();
-    await detectServer();
-    if (!hasServer) {
+    try { await detectServer(); } catch (e) { hasServer = false; }
+    if (hasServer === false) {
       const banner = document.createElement('div');
       banner.className = 'server-banner';
-      banner.innerHTML = 'Running on GitHub Pages (static mode). Site checking works client-side via browser fetch. Server-based OSINT tools are unavailable.';
+      banner.textContent = 'Running on GitHub Pages (static mode). Site checking works client-side via browser fetch. Server-based OSINT tools are unavailable.';
       const main = document.querySelector('.content');
       if (main) main.prepend(banner);
     }
-    await loadCatalog();
+    try { await loadCatalog(); } catch (e) { console.error('loadCatalog failed:', e); }
     if (state.key) $('#btnBreachScan').textContent = 'Breach Scan (HIBP ON)';
     if (localStorage.getItem('liveMode') === '1') setLive(true);
   }
